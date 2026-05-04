@@ -1,9 +1,9 @@
 // Shared LevelUnlockEntry rendering. Used by every entity that surfaces
 // rewards/drops/unlocks (gears, enemies, threats, collectables).
 
-import type { LevelUnlockEntry } from '../data/schema.d';
-import type { GenericGunUpgrade } from '../upgrades/types';
-import { stripHtml } from '../wiki-text';
+import type { LevelUnlockEntry } from './data/schema.d';
+import type { GenericGunUpgrade } from './upgrades/types';
+import { stripHtml } from './wiki-text';
 import { fmtPct } from './format-utils';
 
 export interface DescribeRewardOptions {

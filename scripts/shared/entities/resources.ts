@@ -1,24 +1,51 @@
-// Resource entity: formatter context + cross-reference inversions.
+// Resource entity: loader, identification, used-by inversions, registry.
 // Every upgrade UnlockCost/OuroborosCost/TurbochargeCost and every gear
 // LevelUnlock_Resource is inverted to a per-resource "Used by" table.
 
 import type { Resource, Gear } from '../data/schema.d';
 import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
-import { descriptionToWiki, escapeWikiText, stripHtml } from '../wiki-text';
-import { rgbaToHex } from './format-utils';
 import {
-	loadResources,
-	plainName,
-	displayFilename,
-	safeFilename,
-	resourcePageTitle
-} from '../load-resources';
-import { loadGears } from '../load-gears';
-import { loadUpgrades } from '../load-upgrades';
-import type { EntityClassifierConfig } from '../upload-pipeline';
+	descriptionToWiki,
+	escapeWikiText,
+	normalizeWikiTitle,
+	sanitizeAPIName,
+	stripHtml
+} from '../wiki-text';
+import { defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
+import { isColliding, RESOURCE_SUFFIX } from '../cross-entity-collisions';
+import { rgbaToHex } from '../format-utils';
+import { loadGears } from './gears';
+import { loadUpgrades } from './upgrades';
 
-export { loadResources, plainName, displayFilename, safeFilename, resourcePageTitle };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+export const loadResources = loadFromDump<Resource>({ dumpKey: 'resources' });
+
+// Names may contain rich-text wrappers (e.g. `<font=H>Strange Components</font>`).
+// Use the plain name for everything user-facing — page titles, file names,
+// wikilinks.
+export function plainName(resource: Resource): string {
+	return stripHtml(resource.Name ?? resource.ID).trim();
+}
+
+export function safeFilename(resource: Resource): string {
+	return sanitizeAPIName(resource.ID);
+}
+
+export function displayFilename(resource: Resource): string {
+	const name = plainName(resource);
+	if (!name || !/[a-zA-Z0-9]/.test(name)) return sanitizeAPIName(resource.ID);
+	const base = normalizeWikiTitle(sanitizeAPIName(name));
+	return isColliding(name) ? `${base}${RESOURCE_SUFFIX.filenameSuffix}` : base;
+}
+
+export function resourcePageTitle(resource: Resource): string {
+	const name = plainName(resource);
+	return isColliding(name) ? `${name}${RESOURCE_SUFFIX.titleSuffix}` : name;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Inversions
@@ -65,8 +92,6 @@ export function loadResourceUsage(): ResourceUsage {
 		const key = `${resourceID}|${usage.upgrade.APIName}|${usage.context}`;
 		const prior = seen.get(key);
 		if (prior) {
-			// Same upgrade+context already recorded; keep the one with higher
-			// count (in practice they're identical).
 			if ((usage.count ?? 0) > (prior.count ?? 0)) prior.count = usage.count;
 			return;
 		}
@@ -159,10 +184,10 @@ function buildUsedByGears(usages: GearUsage[]): string {
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
-export function buildResourceContext(
-	resource: Resource,
-	usage: ResourceUsage
-): Record<string, unknown> {
+const getUsage = lazyLoad(loadResourceUsage);
+
+export function buildResourceContext(resource: Resource): Record<string, unknown> {
+	const usage = getUsage();
 	const name = plainName(resource);
 	const upgradeUsages = usage.upgrades.get(resource.ID) ?? [];
 	const gearUsages = usage.gears.get(resource.ID) ?? [];
@@ -189,27 +214,62 @@ export function buildResourceContext(
 	};
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Classifier config
-// ─────────────────────────────────────────────────────────────────────────
-
-export const RESOURCE_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'acquisition', 'strategy', 'trivia', 'notes', 'bugs', 'patch history'].map((s) =>
-			s.toLowerCase()
-		)
-	),
-	autoGenSections: new Set(['used by upgrades', 'used by gears', 'description', 'overview']),
-	infoboxStripPattern: /\{\{Infobox resource[\s\S]*?\}\}/g
-};
-
-// Re-export for the icon extractor.
 export function loadResourceGenerationData() {
 	return {
 		resources: loadResources(),
-		usage: loadResourceUsage(),
+		usage: getUsage(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<Resource>({
+	name: 'resources',
+	dumpKey: 'resources',
+	loadItems: loadResources,
+	safeFilename,
+	displayFilename,
+	pageTitle: resourcePageTitle,
+	identLabel: (r) => `${r.ID} (${plainName(r)})`,
+	infoboxDescription: (r) => r.Description ?? '',
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: [
+			'lore',
+			'acquisition',
+			'strategy',
+			'trivia',
+			'notes',
+			'bugs',
+			'patch history'
+		],
+		autoGenSections: ['used by upgrades', 'used by gears', 'description', 'overview'],
+		infoboxTemplateName: 'Infobox resource'
+	},
+	templateName: 'resource-source.wiki',
+	skeletonTemplateName: 'resource-skeleton.wiki',
+	contextBuilder: buildResourceContext,
+	fileTypes: [
+		{
+			kind: 'icon',
+			sourceDirKind: 'icons',
+			suffix: '_Icon.png',
+			localFilename: (r) => `${displayFilename(r)}_Icon.png`,
+			targetFilename: (r) => `${displayFilename(r)}_Icon.png`,
+			description: (r) =>
+				[
+					`'''${plainName(r)}'''`,
+					'',
+					`Icon for the ${plainName(r)} resource in Mycopunk.`,
+					'',
+					`[[Category:Resource Icons]]`
+				].join('\n')
+		}
+	],
+	icon: {
+		getTexture: (r) => r.Icon ?? null
+	}
+});

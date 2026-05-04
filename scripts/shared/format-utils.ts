@@ -1,6 +1,6 @@
 // Shared formatting helpers used across entity context builders.
 
-import { parseRGBA } from '../upgrades/utils';
+import { parseRGBA } from './upgrades/utils';
 
 // Format a number for display in a wiki table cell. Integers render bare;
 // fractions are rounded to `digits` and stripped of trailing zeros.

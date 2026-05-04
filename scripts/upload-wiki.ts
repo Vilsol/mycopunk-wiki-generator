@@ -37,6 +37,7 @@ const UPLOAD_CONCURRENCY = 1;
 
 interface CliOptions {
 	entity: string;
+	all: boolean;
 	dryRun: boolean;
 	itemFilter?: string; // matched against config.identLabel
 	reportPath?: string;
@@ -277,6 +278,7 @@ async function uploadViaApi(
 function parseArgs(argv: string[]): CliOptions {
 	const opts: CliOptions = {
 		entity: '',
+		all: false,
 		dryRun: false,
 		skipSource: false,
 		skipSkeleton: false,
@@ -290,21 +292,24 @@ function parseArgs(argv: string[]): CliOptions {
 		else if (arg === '--skip-skeleton') opts.skipSkeleton = true;
 		else if (arg === '--overwrite-safe') opts.overwriteSafe = true;
 		else if (arg === '--force-all') opts.forceAll = true;
+		else if (arg === '--all') opts.all = true;
 		else if (arg.startsWith('--entity=')) opts.entity = arg.slice('--entity='.length);
 		else if (arg.startsWith('--filter=')) opts.itemFilter = arg.slice('--filter='.length);
 		else if (arg.startsWith('--report=')) opts.reportPath = arg.slice('--report='.length);
 		else if (arg.startsWith('--force-titles='))
 			opts.forceTitlesPath = arg.slice('--force-titles='.length);
 		else if (arg === '--help' || arg === '-h') {
-			console.log(`Usage: bun scripts/upload-wiki.ts --entity=NAME [options]
+			console.log(`Usage: bun scripts/upload-wiki.ts (--entity=NAME | --all) [options]
 
-Required:
-  --entity=NAME             Which entity to upload (${knownEntities().join(' | ')})
+Required (one of):
+  --entity=NAME             One entity (${knownEntities().join(' | ')})
+  --all                     Every registered entity
 
 Options:
   --dry-run                 Plan and report without uploading
   --filter=IDENT            Limit to one item (matched against the entity's identLabel)
   --report=PATH             Write JSON report to PATH (default: <wiki-source>/<entity>/upload-report.json)
+                            Ignored when --all is used (per-entity reports written individually).
   --skip-source             Skip /source pages (only handle skeletons)
   --skip-skeleton           Skip skeleton pages (only handle /source)
   --overwrite-safe          Overwrite host pages classified as safe
@@ -313,6 +318,7 @@ Options:
                             curator-content classifier entirely.
   --force-titles=PATH       Read host page titles to force-overwrite
                             (default: wiki-config/<entity>/force-overwrite-titles.txt)
+                            Ignored when --all is used.
   --help, -h                Show this help
 `);
 			process.exit(0);
@@ -320,47 +326,79 @@ Options:
 			console.warn(`Unknown argument: ${arg}`);
 		}
 	}
-	if (!opts.entity) {
-		console.error(`--entity is required (one of: ${knownEntities().join(', ')})`);
+	if (!opts.entity && !opts.all) {
+		console.error('Pass --entity=<name> or --all.');
 		process.exit(1);
 	}
 	return opts;
 }
 
-async function main() {
-	const options = parseArgs(process.argv.slice(2));
-	const config = (await resolveEntity(options.entity)) as EntityUploadConfig<unknown>;
+// Module-level rate limiter shared across all entities in `--all` runs.
+const sharedRateLimit = createRateLimiter(RATE_LIMIT_MS);
+
+interface UploadOneSummary {
+	errors: number;
+	flagged: number;
+}
+
+async function uploadOneEntity(
+	entityName: string,
+	baseOptions: CliOptions,
+	gameVersion: string
+): Promise<UploadOneSummary> {
+	const config = (await resolveEntity(entityName)) as EntityUploadConfig<unknown>;
+	console.log(`\n──── ${config.name} ────`);
 
 	const wikiDir = entityOutputDir(import.meta.url, config.name, 'wiki-source');
 	const configDir = entityConfigDir(import.meta.url, config.name);
 
 	if (!fs.existsSync(wikiDir)) {
-		console.error(
-			`Error: ${wikiDir} not found. Run the entity's generator (e.g. \`bun run generate:source\`) first.`
-		);
-		process.exit(1);
+		console.warn(`(no generated output at ${relPath(wikiDir)} — skip)`);
+		return { errors: 0, flagged: 0 };
 	}
 
-	const reportPath = options.reportPath ?? path.join(wikiDir, 'upload-report.json');
+	// Per-entity options scope: reset force-titles for each entity in --all
+	// runs so one entity's list doesn't bleed into the next.
+	const options: CliOptions = {
+		...baseOptions,
+		forceTitles: new Set(baseOptions.forceTitles)
+	};
+	const reportPath =
+		baseOptions.all || !options.reportPath
+			? path.join(wikiDir, 'upload-report.json')
+			: options.reportPath;
 
-	// If no --force-titles is specified, fall back to the conventional config file.
-	const forceTitlesPath =
-		options.forceTitlesPath ?? path.join(configDir, 'force-overwrite-titles.txt');
-	if (fs.existsSync(forceTitlesPath)) {
-		const raw = fs.readFileSync(forceTitlesPath, 'utf8');
-		for (const line of raw.split('\n')) {
-			const t = line.replace(/#.*$/, '').trim();
-			if (t) options.forceTitles.add(t);
+	// Per-entity force-titles file (skipped when --all is used since it
+	// would only apply to a single entity's wiki-config dir).
+	if (!options.all) {
+		const forceTitlesPath =
+			options.forceTitlesPath ?? path.join(configDir, 'force-overwrite-titles.txt');
+		if (fs.existsSync(forceTitlesPath)) {
+			const raw = fs.readFileSync(forceTitlesPath, 'utf8');
+			for (const line of raw.split('\n')) {
+				const t = line.replace(/#.*$/, '').trim();
+				if (t) options.forceTitles.add(t);
+			}
+			console.log(
+				`Loaded ${options.forceTitles.size} force-overwrite title(s) from ${relPath(forceTitlesPath)}`
+			);
 		}
-		console.log(
-			`Loaded ${options.forceTitles.size} force-overwrite title(s) from ${relPath(forceTitlesPath)}`
-		);
+	} else {
+		// Auto-pick up wiki-config/<entity>/force-overwrite-titles.txt during --all.
+		const forceTitlesPath = path.join(configDir, 'force-overwrite-titles.txt');
+		if (fs.existsSync(forceTitlesPath)) {
+			const raw = fs.readFileSync(forceTitlesPath, 'utf8');
+			for (const line of raw.split('\n')) {
+				const t = line.replace(/#.*$/, '').trim();
+				if (t) options.forceTitles.add(t);
+			}
+			if (options.forceTitles.size > 0) {
+				console.log(
+					`Loaded ${options.forceTitles.size} force-overwrite title(s) from ${relPath(forceTitlesPath)}`
+				);
+			}
+		}
 	}
-
-	const gameVersion = loadGameVersion();
-	console.log(`Entity: ${config.name}`);
-	console.log(`Game version: ${gameVersion}`);
-	if (options.dryRun) console.log(`🔍 Dry run — no edits will be made.`);
 
 	const items = config.loadItems();
 	const itemsBySafeFilename = new Map<string, unknown>();
@@ -406,8 +444,8 @@ async function main() {
 		if (missingItems.length > 5) console.warn(`    … and ${missingItems.length - 5} more`);
 	}
 	if (options.itemFilter && pairs.length === 0) {
-		console.error(`No item matched --filter=${options.itemFilter}`);
-		process.exit(1);
+		console.warn(`(no item matched --filter=${options.itemFilter} — skip)`);
+		return { errors: 0, flagged: 0 };
 	}
 
 	console.log(`Found ${pairs.length} ${config.name} to process.`);
@@ -509,10 +547,7 @@ async function main() {
 	const hostErrors: RunReport['hostErrors'] = [];
 
 	if (!options.dryRun) {
-		console.log(`\nLogging in to MediaWiki API…`);
-		await loginBot(getProjectRoot(import.meta.url));
-
-		const rateLimit = createRateLimiter(RATE_LIMIT_MS);
+		const rateLimit = sharedRateLimit;
 
 		const sourceWork = sourcePlans.filter((p) => p.action !== 'skip');
 		console.log(
@@ -620,9 +655,42 @@ async function main() {
 		}
 	}
 
+	return {
+		errors: summary.errors,
+		flagged: options.dryRun ? 0 : flaggedHostPages.length
+	};
+}
+
+async function main() {
+	const options = parseArgs(process.argv.slice(2));
+	const gameVersion = loadGameVersion();
+	console.log(`Game version: ${gameVersion}`);
+	if (options.dryRun) console.log(`🔍 Dry run — no edits will be made.`);
+
+	if (!options.dryRun) {
+		console.log(`Logging in to MediaWiki API…`);
+		await loginBot(getProjectRoot(import.meta.url));
+	}
+
+	const targets = options.all ? knownEntities() : [options.entity];
+
+	let totalErrors = 0;
+	let totalFlagged = 0;
+	for (const name of targets) {
+		const r = await uploadOneEntity(name, options, gameVersion);
+		totalErrors += r.errors;
+		totalFlagged += r.flagged;
+	}
+
+	if (options.all) {
+		console.log(`\n=== Total ===`);
+		console.log(`  errors  ${totalErrors}`);
+		console.log(`  flagged ${totalFlagged}`);
+	}
+
 	// Exit codes:  0 clean · 1 upload errors · 2 flagged hosts (CI gate)
-	if (summary.errors > 0) process.exit(1);
-	if (flaggedHostPages.length > 0 && !options.dryRun) process.exit(2);
+	if (totalErrors > 0) process.exit(1);
+	if (totalFlagged > 0 && !options.dryRun) process.exit(2);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

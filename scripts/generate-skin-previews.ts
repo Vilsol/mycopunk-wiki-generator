@@ -19,8 +19,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { loadSkins, plainName, variantPreviewFilename, type Skin } from './shared/load-skins.ts';
-import { loadCharacters } from './shared/load-characters.ts';
+import {
+	loadSkins,
+	plainName,
+	variantPreviewFilename,
+	type Skin
+} from './shared/entities/skins.ts';
+import { loadCharacters } from './shared/entities/characters.ts';
 import { entityOutputDir, ensureDir } from './shared/paths.ts';
 
 const DEFAULT_BASE = `${process.env.HOME}/.local/share/Steam/steamapps/common/Mycopunk`;
@@ -39,25 +44,27 @@ function detectFFmpegMode(): FFmpegMode {
 	return null;
 }
 
-// Animated-WebP encode. Source mp4s are 2160×2160 @ 25 Mbps for 4 seconds —
-// way oversized for a wiki preview. We downscale to 720×720 (still 4× a
-// 180px display thumbnail, plenty for retina) and re-sample to 30 fps with
-// lanczos. q=80 plus compression_level=6 keeps each output around 1.5–2 MB
-// while preserving the saturation/detail of the original render.
+// Animated-WebP encode. Source is a `frame_%03d.jpg` sequence at 2160×2160
+// (180 frames per variant since v1.8.3 — game stopped shipping pre-encoded
+// .mp4 files). We feed ffmpeg the sequence at 30 fps to produce a 6-second
+// loop downscaled to 720×720 (still 4× a 180px display thumbnail, plenty
+// for retina). q=80 + compression_level=6 keeps each output around 2-3 MB.
 //
 // `-an` drops audio (none present). `-fps_mode passthrough` keeps ffmpeg
 // from re-jiggering frame timing during the codec switch.
-function ffmpegArgs(srcMp4: string, outWebp: string): string[] {
+function ffmpegArgs(framePattern: string, outWebp: string): string[] {
 	return [
 		'-y',
 		'-loglevel',
 		'error',
+		'-framerate',
+		'30',
 		'-i',
-		srcMp4,
+		framePattern,
 		'-vcodec',
 		'libwebp',
 		'-vf',
-		'fps=30,scale=720:720:flags=lanczos',
+		'scale=720:720:flags=lanczos',
 		'-lossless',
 		'0',
 		'-compression_level',
@@ -79,13 +86,13 @@ function shellEscape(s: string): string {
 	return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
-function transcodeWebp(mode: FFmpegMode, srcMp4: string, outWebp: string): boolean {
+function transcodeWebp(mode: FFmpegMode, framePattern: string, outWebp: string): boolean {
 	if (mode === 'direct') {
-		const r = spawnSync('ffmpeg', ffmpegArgs(srcMp4, outWebp), { stdio: 'inherit' });
+		const r = spawnSync('ffmpeg', ffmpegArgs(framePattern, outWebp), { stdio: 'inherit' });
 		return r.status === 0;
 	}
 	if (mode === 'nix') {
-		const cmd = ['ffmpeg', ...ffmpegArgs(srcMp4, outWebp)].map(shellEscape).join(' ');
+		const cmd = ['ffmpeg', ...ffmpegArgs(framePattern, outWebp)].map(shellEscape).join(' ');
 		const r = spawnSync('nix-shell', ['-p', 'ffmpeg', '--run', cmd], { stdio: 'inherit' });
 		return r.status === 0;
 	}
@@ -96,9 +103,9 @@ interface VariantTask {
 	skin: Skin;
 	parent: string;
 	preset: string;
-	mp4Path: string; // absolute
-	previewDir: string; // absolute (folder containing mp4 + frames)
-	stillFile: string; // local frame in previewDir
+	framePattern: string; // absolute, e.g. ".../variant/frame_%03d.jpg"
+	previewDir: string; // absolute (folder containing the frame sequence)
+	stillFile: string; // first frame in the sequence
 }
 
 type FilterMode = 'characters' | 'weapons' | null;
@@ -187,14 +194,17 @@ function collectTasks(
 				declared++;
 				const rel = previews[parent][preset];
 				if (!rel) continue;
-				const mp4Path = path.join(baseDir, rel);
-				const previewDir = path.dirname(mp4Path);
+				// Dump's `Previews[parent][preset]` is the legacy mp4 path; since
+				// v1.8.3 the game ships only the underlying `frame_NNN.jpg`
+				// sequence in that directory. Use the dirname for both probes.
+				const previewDir = path.dirname(path.join(baseDir, rel));
 				const stillFile = path.join(previewDir, STILL_FRAME);
-				if (!fs.existsSync(mp4Path) || !fs.existsSync(stillFile)) {
+				if (!fs.existsSync(stillFile)) {
 					missing++;
 					continue;
 				}
-				tasks.push({ skin: s, parent, preset, mp4Path, previewDir, stillFile });
+				const framePattern = path.join(previewDir, 'frame_%03d.jpg');
+				tasks.push({ skin: s, parent, preset, framePattern, previewDir, stillFile });
 			}
 		}
 	}
@@ -278,7 +288,7 @@ async function main() {
 
 		const t0 = Date.now();
 		console.log(`${idx} → ${skinLabel} — transcoding…`);
-		const ok = transcodeWebp(ffmpegMode, t.mp4Path, webpOut);
+		const ok = transcodeWebp(ffmpegMode, t.framePattern, webpOut);
 		const dt = ((Date.now() - t0) / 1000).toFixed(1);
 		if (ok) {
 			webpOk++;

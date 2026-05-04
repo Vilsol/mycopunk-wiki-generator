@@ -1,21 +1,109 @@
-// Enemy entity: formatter context, tag/region rendering, custom-loot table.
-// Generation script and uploader both pull from this module.
+// Enemy entity: loader, identification, stat/variant tables, registry.
 
 import type { Enemy } from '../data/schema.d';
 import { readDump } from '../dump';
-import { escapeWikiText } from '../wiki-text';
-import {
-	loadEnemies,
-	loadEnemyGroups,
-	displayFilename,
-	enemyPageTitle,
-	safeFilename
-} from '../load-enemies';
-import type { EntityClassifierConfig } from '../upload-pipeline';
-import { fmtNum, fmtPct } from './format-utils';
-import { buildRewardsTable } from './reward-utils';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName } from '../wiki-text';
+import { defineEntity, lazyLoad } from '../entity-registry';
+import { fmtNum, fmtPct } from '../format-utils';
+import { buildRewardsTable } from '../reward-utils';
 
-export { loadEnemies, loadEnemyGroups, displayFilename, enemyPageTitle, safeFilename };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+function loadRawEnemies(): Enemy[] {
+	const data = readDump() as unknown as { enemies?: Record<string, Enemy> };
+	if (!data?.enemies || typeof data.enemies !== 'object') {
+		throw new Error(`Invalid data.json shape: expected an object with an 'enemies' property`);
+	}
+	// Junk entries (TestBrute, //:ERROR://, ID=0 legacy duplicates) are now
+	// dropped at dump time — see Santa update v1.8.1H1+. Just require a Name.
+	return Object.values(data.enemies).filter((e) => (e.Name ?? '').trim().length > 0);
+}
+
+// Score for picking the canonical variant when an enemy Name has multiple
+// records: prefer entries that carry CustomLoot, then those with non-empty Tags.
+function variantScore(e: Enemy): number {
+	let s = 0;
+	if ((e.CustomLoot?.length ?? 0) > 0) s += 100;
+	const tags = (e.Tags ?? '').trim();
+	if (tags && tags !== 'None') s += 10;
+	return s;
+}
+
+// Stable fingerprint of the gameplay-relevant fields. Two enemies with the same
+// fingerprint are treated as exact duplicates (not separate variants).
+export function variantFingerprint(e: Enemy): string {
+	const c = e.Config ?? {};
+	const parts = [
+		(e.Tags ?? '').trim(),
+		e.MinLegs ?? '',
+		e.MaxLegs ?? '',
+		e.ArmChance ?? '',
+		e.ShellHealthMultiplier ?? '',
+		e.OverclockChance ?? '',
+		c.MoveSpeed ?? '',
+		c.TurnSpeed ?? '',
+		c.NavRadius ?? '',
+		c.HitStunChance ?? '',
+		c.RagdollForceThreshold ?? '',
+		c.FlankChance ?? '',
+		c.MaxConcurrentMeleeAttacks ?? '',
+		c.MeleeInterval ?? '',
+		c.RegrowLimbDuration ?? '',
+		c.RegrowLimbCooldown ?? '',
+		(e.CustomLoot?.length ?? 0) > 0 ? 'L' : ''
+	];
+	return parts.join('|');
+}
+
+// Group enemies by Name. Within each group, dedup by fingerprint so identical
+// records (e.g. 3 of the 5 "Brute" entries) collapse, but genuine variants
+// (e.g. the Exploder Brute) are preserved as separate entries.
+export function loadEnemyGroups(): Map<string, Enemy[]> {
+	const groups = new Map<string, Enemy[]>();
+	for (const e of loadRawEnemies()) {
+		const name = e.Name as string;
+		const list = groups.get(name) ?? [];
+		list.push(e);
+		groups.set(name, list);
+	}
+	for (const [name, list] of groups) {
+		const seen = new Map<string, Enemy>();
+		for (const e of list) {
+			const fp = variantFingerprint(e);
+			const prior = seen.get(fp);
+			if (!prior || variantScore(e) > variantScore(prior)) seen.set(fp, e);
+		}
+		const unique = [...seen.values()].sort((a, b) => variantScore(b) - variantScore(a));
+		groups.set(name, unique);
+	}
+	return groups;
+}
+
+export function loadEnemies(): Enemy[] {
+	return [...loadEnemyGroups().values()].map((variants) => variants[0]);
+}
+
+function fallbackName(enemy: Enemy): string {
+	return enemy.APIName || enemy.InternalName || `enemy_${enemy.ID}`;
+}
+
+export function safeFilename(enemy: Enemy): string {
+	const base = enemy.APIName || enemy.InternalName;
+	if (!base || !/[a-zA-Z0-9]/.test(base)) return `enemy_${enemy.ID}`;
+	return sanitizeAPIName(base);
+}
+
+export function displayFilename(enemy: Enemy): string {
+	const name = enemy.Name || fallbackName(enemy);
+	if (!/[a-zA-Z0-9]/.test(name)) return `enemy_${enemy.ID}`;
+	return normalizeWikiTitle(sanitizeAPIName(name));
+}
+
+export function enemyPageTitle(enemy: Enemy): string {
+	return enemy.Name || fallbackName(enemy);
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Tag / type rendering
@@ -93,12 +181,9 @@ function buildStatsTable(enemy: Enemy): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Variants table — surfaces genuinely-different stat profiles for enemy names
-// that have multiple records (e.g. the 4 distinct "Grunt" loadouts).
+// Variants table
 // ─────────────────────────────────────────────────────────────────────────
 
-// Stat columns rendered for each variant. Picked to maximise differentiation:
-// every Grunt/Brute/Abomination variant differs in at least one of these.
 const VARIANT_STAT_COLUMNS: Array<{
 	label: string;
 	get: (e: Enemy) => number | undefined;
@@ -113,9 +198,6 @@ const VARIANT_STAT_COLUMNS: Array<{
 ];
 
 function buildVariantsTable(variants: Enemy[]): string {
-	// Build display rows, then dedupe on the visible content. Two records may
-	// fingerprint differently (e.g. differ only in FlankChance) but render the
-	// same row in the displayed columns — collapse those.
 	const seen = new Set<string>();
 	const rows: string[] = [];
 	for (const v of variants) {
@@ -147,7 +229,6 @@ function buildVariantsTable(variants: Enemy[]): string {
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
-// Manual map for category names — `<type>s` over-pluralizes "Boss" → "Bosss".
 const ENEMY_TYPE_CATEGORY: Record<string, string> = {
 	Grunt: 'Grunts',
 	Brute: 'Brutes',
@@ -155,10 +236,10 @@ const ENEMY_TYPE_CATEGORY: Record<string, string> = {
 	Boss: 'Bosses'
 };
 
-export function buildEnemyContext(
-	enemy: Enemy,
-	variants: Enemy[] = [enemy]
-): Record<string, unknown> {
+const getGroups = lazyLoad(loadEnemyGroups);
+
+export function buildEnemyContext(enemy: Enemy): Record<string, unknown> {
+	const variants = getGroups().get(enemy.Name as string) ?? [enemy];
 	const tags = splitFlags(enemy.Tags);
 	const enemyType = enemy.Config?.EnemyType ?? '';
 	const lootSection = buildRewardsTable(enemy.CustomLoot);
@@ -184,33 +265,42 @@ export function buildEnemyContext(
 	};
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Classifier config
-// ─────────────────────────────────────────────────────────────────────────
-
-export const ENEMY_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'strategy', 'tips', 'trivia', 'notes', 'bugs', 'patch history', 'changelog'].map((s) =>
-			s.toLowerCase()
-		)
-	),
-	autoGenSections: new Set([
-		'stats',
-		'statistics',
-		'tags',
-		'drops',
-		'loot',
-		'variants',
-		'overview'
-	]),
-	infoboxStripPattern: /\{\{Infobox enemy[\s\S]*?\}\}/g
-};
-
 export function loadEnemyGenerationData() {
 	return {
 		enemies: loadEnemies(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<Enemy>({
+	name: 'enemies',
+	dumpKey: 'enemies',
+	loadItems: loadEnemies,
+	safeFilename,
+	displayFilename,
+	pageTitle: enemyPageTitle,
+	identLabel: (e) => `${e.APIName ?? e.InternalName} (ID: ${e.ID})`,
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: [
+			'lore',
+			'strategy',
+			'tips',
+			'trivia',
+			'notes',
+			'bugs',
+			'patch history',
+			'changelog'
+		],
+		autoGenSections: ['stats', 'statistics', 'tags', 'drops', 'loot', 'variants', 'overview'],
+		infoboxTemplateName: 'Infobox enemy'
+	},
+	templateName: 'enemy-source.wiki',
+	skeletonTemplateName: 'enemy-skeleton.wiki',
+	contextBuilder: buildEnemyContext
+	// fileTypes: [] — enemies have no Icon.Texture in the dump yet.
+});

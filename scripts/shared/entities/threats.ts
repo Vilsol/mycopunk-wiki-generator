@@ -1,28 +1,43 @@
-// Threat entity: formatter context + mission-rewards table.
+// Threat entity: per-tier mission rewards table + classifier config.
 //
 // Each Threat tier carries `MissionRewards: LevelUnlockEntry[]` — same shape as
 // gear LevelUnlocks. We render those into a wikitable on each threat's page.
 
 import type { Threat } from '../data/schema.d';
-import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
-import { escapeWikiText } from '../wiki-text';
-import { loadThreats, displayFilename, threatPageTitle, safeFilename } from '../load-threats';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName } from '../wiki-text';
+import { defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
 import { loadUpgradesByID } from './characters';
-import type { EntityClassifierConfig } from '../upload-pipeline';
-import { rgbaToHex } from './format-utils';
-import { buildRewardsTable } from './reward-utils';
+import { rgbaToHex } from '../format-utils';
+import { buildRewardsTable } from '../reward-utils';
 
-export { loadThreats, displayFilename, threatPageTitle, safeFilename };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+export const loadThreats = loadFromDump<Threat>({ dumpKey: 'threats' });
+
+export function safeFilename(threat: Threat): string {
+	return sanitizeAPIName(threat.ID);
+}
+
+export function displayFilename(threat: Threat): string {
+	const name = threat.Name || threat.ID;
+	return normalizeWikiTitle(sanitizeAPIName(name));
+}
+
+export function threatPageTitle(threat: Threat): string {
+	return threat.Name || threat.NumberLabel || threat.ID;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
-export function buildThreatContext(
-	threat: Threat,
-	upgradesByID: Map<string, GenericGunUpgrade>
-): Record<string, unknown> {
+const getUpgradesByID = lazyLoad(loadUpgradesByID);
+
+export function buildThreatContext(threat: Threat): Record<string, unknown> {
+	const upgradesByID = getUpgradesByID();
 	const rewardsSection = buildRewardsTable(threat.MissionRewards, { upgradesByID });
 	const tierNum = threat.ID.replace(/^threat/, '');
 
@@ -40,24 +55,53 @@ export function buildThreatContext(
 	};
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Classifier config
-// ─────────────────────────────────────────────────────────────────────────
-
-export const THREAT_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history'].map((s) => s.toLowerCase())
-	),
-	autoGenSections: new Set(['rewards', 'mission rewards', 'overview']),
-	infoboxStripPattern: /\{\{Infobox threat[\s\S]*?\}\}/g
-};
-
 export function loadThreatGenerationData() {
 	return {
 		threats: loadThreats(),
-		upgradesByID: loadUpgradesByID(),
+		upgradesByID: getUpgradesByID(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<Threat>({
+	name: 'threats',
+	dumpKey: 'threats',
+	loadItems: loadThreats,
+	safeFilename,
+	displayFilename,
+	pageTitle: threatPageTitle,
+	identLabel: (t) => `${t.ID} (${t.Name ?? '(no name)'})`,
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: ['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history'],
+		autoGenSections: ['rewards', 'mission rewards', 'overview'],
+		infoboxTemplateName: 'Infobox threat'
+	},
+	templateName: 'threat-source.wiki',
+	skeletonTemplateName: 'threat-skeleton.wiki',
+	contextBuilder: buildThreatContext,
+	fileTypes: [
+		{
+			kind: 'icon',
+			sourceDirKind: 'icons',
+			suffix: '_Icon.png',
+			localFilename: (t) => `${displayFilename(t)}_Icon.png`,
+			targetFilename: (t) => `${displayFilename(t)}_Icon.png`,
+			description: (t) =>
+				[
+					`'''${t.Name ?? t.ID}'''`,
+					'',
+					`Icon for ${t.NumberLabel ?? t.ID} (${t.Name ?? t.ID}) in Mycopunk.`,
+					'',
+					`[[Category:Threat Icons]]`
+				].join('\n')
+		}
+	],
+	icon: {
+		getTexture: (t) => t.Icon ?? null
+	}
+});

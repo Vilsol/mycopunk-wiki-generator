@@ -1,32 +1,115 @@
-// Skin entity: per-cosmetic-upgrade page with full Skin block (modifiers,
-// variants gallery, name modifiers list, parent backlinks, preset references).
+// Skin entity: loader, identification, per-cosmetic-upgrade page with full
+// Skin block (modifiers, variants gallery, name modifiers list, parent
+// backlinks, preset references), registry definition.
 
-import type { UpgradePresetEntry } from '../data/schema.d';
+import type { Upgrade, DSkin, UpgradePresetEntry } from '../data/schema.d';
 import { readDump } from '../dump';
-import { descriptionToWiki, escapeWikiText, stripHtml } from '../wiki-text';
 import {
-	loadSkins,
-	plainName,
-	displayFilename,
-	safeFilename,
-	skinPageTitle,
-	variantPreviewFilename,
-	type Skin
-} from '../load-skins';
-import { presetPageTitle } from '../load-upgrade-presets';
-import { loadGears, gearPageTitle } from '../load-gears';
-import { loadCharacters, characterPageTitle } from '../load-characters';
-import { fmtPct, rgbaToHex } from './format-utils';
-import type { EntityClassifierConfig } from '../upload-pipeline';
+	descriptionToWiki,
+	escapeWikiText,
+	normalizeWikiTitle,
+	sanitizeAPIName,
+	stripHtml
+} from '../wiki-text';
+import { defineEntity } from '../entity-registry';
+import { presetPageTitle } from './upgrade-presets';
+import { loadGears, gearPageTitle } from './gears';
+import { loadCharacters, characterPageTitle } from './characters';
+import { fmtPct, rgbaToHex } from '../format-utils';
 
-export {
-	loadSkins,
-	plainName,
-	displayFilename,
-	safeFilename,
-	skinPageTitle,
-	variantPreviewFilename
-};
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface Skin {
+	upgrade: Upgrade;
+	skin: DSkin;
+	parents: string[];
+	parentDisplays: string[];
+}
+
+const SKIN_NAME_TEST_PATTERN = /^_test|\.[a-z]+$/;
+
+function stripParens(name: string): string {
+	return name.split(' (')[0].trim();
+}
+
+export function loadSkins(): Skin[] {
+	const data = readDump() as unknown as { upgrades?: Record<string, Upgrade> };
+	if (!data?.upgrades || typeof data.upgrades !== 'object') {
+		throw new Error(`Invalid data.json shape: expected an 'upgrades' object`);
+	}
+
+	const out: Skin[] = [];
+	for (const u of Object.values(data.upgrades)) {
+		if (u.UpgradeType !== 'Cosmetic') continue;
+		if (!u.Skin) continue;
+		const name = stripHtml(u.Name ?? '').trim();
+		if (!name || SKIN_NAME_TEST_PATTERN.test(name)) continue;
+
+		const applicable = u.ApplicableTo ?? [];
+		const parents = applicable.map((a) => a.APIName ?? '').filter(Boolean);
+		const parentDisplays = applicable.map((a) => stripParens(a.Name ?? '')).filter(Boolean);
+
+		out.push({ upgrade: u, skin: u.Skin, parents, parentDisplays });
+	}
+
+	out.sort((a, b) => {
+		const an = stripHtml(a.upgrade.Name ?? '');
+		const bn = stripHtml(b.upgrade.Name ?? '');
+		const c = an.localeCompare(bn);
+		if (c) return c;
+		return (a.parentDisplays[0] ?? '').localeCompare(b.parentDisplays[0] ?? '');
+	});
+	return out;
+}
+
+export function plainName(s: Skin): string {
+	return stripHtml(s.upgrade.Name ?? '').trim();
+}
+
+// Cosmetic.APIName collides across parents (3× "Factory"), so the only
+// globally-unique base for a filename is the dump ID.
+export function safeFilename(s: Skin): string {
+	return `skin_${s.upgrade.ID}`;
+}
+
+export function skinPageTitle(s: Skin): string {
+	const name = plainName(s);
+	if (s.parentDisplays.length === 1) return `${s.parentDisplays[0]} ${name} Skin`;
+	if (s.parentDisplays.length > 1) return `${name} (Universal Skin)`;
+	return `${name} Skin`;
+}
+
+export function displayFilename(s: Skin): string {
+	const name = plainName(s);
+	const base =
+		s.parentDisplays.length === 1
+			? `${s.parentDisplays[0]}_${name}_Skin`
+			: s.parentDisplays.length > 1
+				? `${name}_Universal_Skin`
+				: `${name}_Skin`;
+	return normalizeWikiTitle(sanitizeAPIName(base));
+}
+
+// Per-variant filename. Single-parent skins encode the parent in
+// `displayFilename` already; multi-parent (universal) skins share one
+// `displayFilename` across all gear renderings, so we MUST include the
+// parent in the variant filename — otherwise every (parent, preset) pair
+// would collapse to one file.
+//   `jpg`  — single frame still.
+//   `webp` — animated 360° rotation.
+export function variantPreviewFilename(
+	s: Skin,
+	parent: string,
+	preset: string,
+	ext: 'webp' | 'jpg'
+): string {
+	const base = displayFilename(s);
+	const presetSlug = normalizeWikiTitle(sanitizeAPIName(preset));
+	const parentSlug = s.parents.length > 1 ? `${normalizeWikiTitle(sanitizeAPIName(parent))}_` : '';
+	return `${base}_${parentSlug}${presetSlug}_Preview.${ext}`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Parent-link resolution. `Skin.Previews` keys and `Skin.parents` are API
@@ -323,15 +406,34 @@ export function buildSkinContext(s: Skin): Record<string, unknown> {
 // Classifier config
 // ─────────────────────────────────────────────────────────────────────────
 
-export const SKIN_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'gallery', 'trivia', 'notes', 'patch history'].map((s) => s.toLowerCase())
-	),
-	autoGenSections: new Set(['modifiers', 'variants', 'name modifiers', 'description', 'overview']),
-	infoboxStripPattern: /\{\{Infobox skin[\s\S]*?\}\}/g
-};
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<Skin>({
+	name: 'skins',
+	dumpKey: 'upgrades', // skins live under the upgrades map; loader filters
+	loadItems: loadSkins,
+	safeFilename,
+	displayFilename,
+	pageTitle: skinPageTitle,
+	identLabel: (s) => `skin_${s.upgrade.ID}`,
+	infoboxDescription: (s) => s.upgrade.Description ?? '',
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: ['lore', 'gallery', 'trivia', 'notes', 'patch history'],
+		autoGenSections: ['modifiers', 'variants', 'name modifiers', 'description', 'overview'],
+		// Strip both "Infobox skin" and "Infobox skin preset" — but only "skin",
+		// not "skin preset" (those go on preset pages, not skin pages).
+		infoboxStripPattern: /\{\{Infobox skin(?! preset)[\s\S]*?\}\}/g
+	},
+	templateName: 'skin-source.wiki',
+	skeletonTemplateName: 'skin-skeleton.wiki',
+	contextBuilder: buildSkinContext
+	// Skins don't have icons — variant previews are uploaded by
+	// `upload-skin-previews.ts` and aren't part of the standard fileTypes
+	// flow.
+});
 
 export function loadSkinGenerationData() {
 	return {

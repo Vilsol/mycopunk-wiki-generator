@@ -1,27 +1,56 @@
-// Gear entity: formatter context, compatible-upgrade inversion, stat
-// extraction from `RawData.gunData`. Generation script and uploader both
-// pull from this module.
+// Gear entity: loader, identification, formatter context,
+// compatible-upgrade inversion, stat extraction from `RawData.gunData`,
+// registry definition.
 
 import type { Gear } from '../data/schema.d';
 import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
-import { descriptionToWiki, escapeWikiText, stripHtml } from '../wiki-text';
-import { loadGears, displayFilename, gearPageTitle } from '../load-gears';
-import { loadUpgrades, mapGunName } from '../load-upgrades';
-import { loadSkins, skinPageTitle, variantPreviewFilename, type Skin } from '../load-skins';
-import type { EntityClassifierConfig } from '../upload-pipeline';
-import { fmtNum } from './format-utils';
-import { buildLevelUnlocksTable } from './reward-utils';
+import {
+	descriptionToWiki,
+	escapeWikiText,
+	normalizeWikiTitle,
+	sanitizeAPIName,
+	stripHtml
+} from '../wiki-text';
+import { defaultIconFileType, defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
+import { loadUpgrades, mapGunName } from './upgrades';
+import { loadSkins, skinPageTitle, variantPreviewFilename, type Skin } from './skins';
+import { fmtNum } from '../format-utils';
+import { buildLevelUnlocksTable } from '../reward-utils';
+import { rarityCell } from '../rarity-display';
 
-export { loadGears, displayFilename, gearPageTitle };
-export { safeFilename } from '../load-gears';
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+export const loadGears = loadFromDump<Gear>({ dumpKey: 'gears' });
+
+export function safeFilename(gear: Gear): string {
+	if (!gear.APIName || !/[a-zA-Z0-9]/.test(gear.APIName)) {
+		return `gear_${gear.ID}`;
+	}
+	return sanitizeAPIName(gear.APIName);
+}
+
+// Display-name-based filename used for wiki-uploaded assets (icons).
+// Mirrors the upgrade `displayFilename` convention so the wiki saves the
+// asset under a title the user can predict from the gear's Name.
+export function displayFilename(gear: Gear): string {
+	if (!gear.Name || !/[a-zA-Z0-9]/.test(gear.Name)) {
+		return `gear_${gear.ID}`;
+	}
+	return normalizeWikiTitle(sanitizeAPIName(gear.Name));
+}
+
+export function gearPageTitle(gear: Gear): string {
+	// Use the in-game display name verbatim. Curators may add redirects from
+	// alternative spellings (e.g. "Blitzeg" → "Blitseg") manually.
+	return gear.Name;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Compatible-upgrade inversion
 // ─────────────────────────────────────────────────────────────────────────
-// Each upgrade lists the gears it applies to via `ApplicableTo[].APIName`.
-// We invert that index so a gear page can list every upgrade that can be
-// equipped on it.
 
 export interface UpgradesByGear {
 	upgrades: Map<string, GenericGunUpgrade[]>; // keyed by gear APIName
@@ -53,11 +82,6 @@ export function loadUpgradesByGear(): UpgradesByGear {
 // Gun stats extraction
 // ─────────────────────────────────────────────────────────────────────────
 
-// Subset of the unityesque gunData blob we actually surface on the wiki.
-// Untyped because the dump's `RawData` is `Record<string, unknown>`.
-// damageEffect enum values found in the dump (verified from gear descriptions):
-//   0 = None (Normal), 1 = Fire, 2 = Shock, 3 = Acid
-// Bees (4) doesn't appear on any gear's gunData — they come from upgrades.
 const DAMAGE_EFFECT_NAMES: Record<number, string> = {
 	0: 'Normal',
 	1: 'Fire',
@@ -202,37 +226,6 @@ function buildStatsTable(gear: Gear): string {
 // Compatible-upgrade tables
 // ─────────────────────────────────────────────────────────────────────────
 
-const RARITY_COLORS: Record<string, string> = {
-	Standard: 'green',
-	Rare: 'cornflowerblue',
-	Epic: 'magenta',
-	Exotic: 'orange',
-	Oddity: 'red',
-	Contraband: 'purple'
-};
-
-// Power order so a sortable table sorts by rarity tier, not alphabetically.
-// Standard < Rare < Epic < Exotic < Oddity < Contraband. Anything not on the
-// list sorts last via a sentinel.
-const RARITY_ORDER: Record<string, number> = {
-	Standard: 1,
-	Rare: 2,
-	Epic: 3,
-	Exotic: 4,
-	Oddity: 5,
-	Contraband: 6
-};
-
-// Returns a wiki-table cell *body* prefixed with `data-sort-value="N" | ` so
-// MediaWiki's sortable plugin uses the numeric tier as the sort key while the
-// visible text is the coloured rarity span. Insert as `|| ${rarityCell(...)}`.
-function rarityCell(rarity: string): string {
-	const order = RARITY_ORDER[rarity] ?? 99;
-	const color = RARITY_COLORS[rarity];
-	const inner = color ? `<span style="color:${color}">${rarity}</span>` : rarity;
-	return `data-sort-value="${order}" | ${inner}`;
-}
-
 function buildUpgradesTable(upgrades: GenericGunUpgrade[]): string {
 	if (upgrades.length === 0) return '';
 	const out = ['{| class="wikitable sortable"', '! Name !! Rarity !! Description'];
@@ -248,9 +241,6 @@ function buildUpgradesTable(upgrades: GenericGunUpgrade[]): string {
 	return out.join('\n');
 }
 
-// Index of Skin entries by upgrade ID so the table can link each row to its
-// dedicated skin page (with thumbnail) instead of a non-existent
-// `[[<Name> Upgrade]]`.
 function loadSkinsByID(): Map<string, Skin> {
 	const out = new Map<string, Skin>();
 	for (const s of loadSkins()) out.set(String(s.upgrade.ID), s);
@@ -259,10 +249,6 @@ function loadSkinsByID(): Map<string, Skin> {
 
 function basePreviewThumb(s: Skin, gearAPIName: string): string {
 	const previews = s.skin.Previews ?? {};
-	// Prefer this gear's own previews if present, otherwise fall back to any
-	// available parent (universal skins always have an entry for this gear,
-	// but stay defensive in case the dump ever lists ApplicableTo without
-	// a matching Previews entry).
 	const parent = previews[gearAPIName] ? gearAPIName : Object.keys(previews)[0];
 	if (!parent) return '';
 	const variants = previews[parent] ?? {};
@@ -275,9 +261,6 @@ function basePreviewThumb(s: Skin, gearAPIName: string): string {
 function buildSkinsTable(skins: GenericGunUpgrade[], gearAPIName: string): string {
 	if (skins.length === 0) return '';
 	const skinsByID = loadSkinsByID();
-	// Dedupe by skin page title — multiple cosmetic upgrade IDs can resolve to
-	// the same skin page (rarity dupes, redrops). Keep the one with the most
-	// variants for *this* gear.
 	const byPage = new Map<string, Skin>();
 	for (const u of skins) {
 		const found = skinsByID.get(String(u.ID));
@@ -314,10 +297,10 @@ function buildSkinsTable(skins: GenericGunUpgrade[], gearAPIName: string): strin
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
-export function buildGearContext(
-	gear: Gear,
-	upgradesByGear: UpgradesByGear
-): Record<string, unknown> {
+const getUpgradesByGear = lazyLoad(loadUpgradesByGear);
+
+export function buildGearContext(gear: Gear): Record<string, unknown> {
+	const upgradesByGear = getUpgradesByGear();
 	const baseGrid = gear.GridSizes?.[0];
 	const gridSize =
 		baseGrid && baseGrid.Width && baseGrid.Height ? `${baseGrid.Width}×${baseGrid.Height}` : '';
@@ -345,7 +328,6 @@ export function buildGearContext(
 		unlocksSection: buildLevelUnlocksTable(gear.LevelUnlocks, { includeChance: false }),
 		upgradesSection: buildUpgradesTable(compatibleUpgrades),
 		skinsSection: buildSkinsTable(compatibleSkins, gear.APIName),
-		// Lowercased single-token category for [[Category:Primary]] etc.
 		categoryName:
 			gear.GearType === 'Throwable'
 				? 'Throwables'
@@ -360,56 +342,77 @@ export function buildGearContext(
 								: gear.GearType === 'Custom'
 									? 'Equipment'
 									: gear.GearType,
-		// Forward applicable upgrades to consumers that want to populate
-		// downstream cross-references in templates.
 		applicableUpgradesNames: compatibleUpgrades.map((u) => stripHtml(u.Name)),
 		applicableSkinsNames: compatibleSkins.map((u) => stripHtml(u.Name)),
-		// Strip mapping for the "applies to" / cross-references list (parity
-		// with upgrade pipeline's mapGunName).
 		applicableTo: mapGunName(gear.Name)
 	};
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Classifier config (for the host-page uploader)
-// ─────────────────────────────────────────────────────────────────────────
-
-export const GEAR_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''Add gear lore here.''`, `''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'trivia', 'notes', 'bugs', 'strategy', 'tips', 'patch history', 'changelog'].map((s) =>
-			s.toLowerCase()
-		)
-	),
-	autoGenSections: new Set([
-		'stats',
-		'statistics',
-		'level unlocks',
-		'unlocks',
-		'upgrades',
-		'skin upgrades',
-		'skins'
-	]),
-	infoboxStripPattern: /\{\{Infobox gear[\s\S]*?\}\}/g,
-	// The gear skeleton drops a `[[File:<Name> Showcase.png|thumb|...]]`
-	// inside Lore plus a float-clearing <div> after it. Without stripping,
-	// the classifier would flag the bot's own previously-pushed page as
-	// "pattern-a-edited" on the next run.
-	botEmittedPatterns: [
-		/\[\[File:[^\]]*Showcase[^\]]*\]\]/gi,
-		/<div\s+style\s*=\s*"clear:\s*both[^"]*"\s*>\s*<\/div>/gi,
-		// Legacy: pre-fix skeleton emitted `{{clear}}` (a redlink template);
-		// keep stripping until every host page has been re-pushed.
-		/\{\{[Cc]lear\}\}/g
-	]
-};
-
-// Re-export the bundle of dump helpers used by the generator wrapper.
 export function loadGearGenerationData() {
 	return {
 		gears: loadGears(),
-		upgradesByGear: loadUpgradesByGear(),
+		upgradesByGear: getUpgradesByGear(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<Gear>({
+	name: 'gears',
+	dumpKey: 'gears',
+	loadItems: loadGears,
+	safeFilename,
+	displayFilename,
+	pageTitle: gearPageTitle,
+	identLabel: (g) => `${g.APIName} (ID: ${g.ID})`,
+	infoboxDescription: (g) => g.Description ?? '',
+	classifier: {
+		placeholderPhrases: [`''Add gear lore here.''`, `''To be written.''`],
+		curatorOnlySections: [
+			'lore',
+			'trivia',
+			'notes',
+			'bugs',
+			'strategy',
+			'tips',
+			'patch history',
+			'changelog'
+		],
+		autoGenSections: [
+			'stats',
+			'statistics',
+			'level unlocks',
+			'unlocks',
+			'upgrades',
+			'skin upgrades',
+			'skins'
+		],
+		infoboxTemplateName: 'Infobox gear',
+		// The gear skeleton drops a `[[File:<Name> Showcase.png|thumb|...]]`
+		// inside Lore plus a float-clearing <div> after it. Without stripping,
+		// the classifier would flag the bot's own previously-pushed page as
+		// "pattern-a-edited" on the next run.
+		botEmittedPatterns: [
+			/\[\[File:[^\]]*Showcase[^\]]*\]\]/gi,
+			/<div\s+style\s*=\s*"clear:\s*both[^"]*"\s*>\s*<\/div>/gi,
+			/\{\{[Cc]lear\}\}/g
+		]
+	},
+	templateName: 'gear-source.wiki',
+	skeletonTemplateName: 'gear-skeleton.wiki',
+	contextBuilder: buildGearContext,
+	fileTypes: [
+		defaultIconFileType<Gear>({
+			displayFilename,
+			prettyName: (g) => g.Name,
+			categoryName: 'Gear Icons',
+			entityLabelSingular: 'gear'
+		})
+	],
+	icon: {
+		getTexture: (g) => g.Icon ?? null
+	}
+});

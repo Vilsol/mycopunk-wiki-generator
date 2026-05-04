@@ -19,7 +19,7 @@ import {
 	skinPageTitle,
 	variantPreviewFilename,
 	type Skin
-} from './shared/load-skins.ts';
+} from './shared/entities/skins.ts';
 
 const RATE_LIMIT_MS = 1000;
 

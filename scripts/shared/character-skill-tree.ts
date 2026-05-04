@@ -19,20 +19,15 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { SkillTreeNode } from '../data/schema.d';
-import type { GenericGunUpgrade } from '../upgrades/types';
-import { stripHtml } from '../wiki-text';
-import { displayFilename as upgradeDisplayFilename } from '../load-upgrades';
-import { entityOutputDir } from '../paths';
+import type { SkillTreeNode } from './data/schema.d';
+import type { GenericGunUpgrade } from './upgrades/types';
+import { stripHtml } from './wiki-text';
+import { displayFilename as upgradeDisplayFilename } from './entities/upgrades';
+import { entityOutputDir } from './paths';
+import { rarityColor } from './rarity-display';
 
-const RARITY_STROKE: Record<string, string> = {
-	Standard: '#3dff76',
-	Rare: '#58bcff',
-	Epic: '#d35fff',
-	Exotic: '#ffa02a',
-	Oddity: '#ff3134',
-	Contraband: '#a050ff'
-};
+// Skill-tree node strokes: per-tier color from the dump (RarityEntry.Color).
+// Falls back to a neutral grey when the rarity isn't in the catalog.
 
 const SQRT_3 = Math.sqrt(3);
 
@@ -157,7 +152,7 @@ export function layoutSkillTree(
 	for (const { node, upgrade, x, y } of placed) {
 		const cx = x + offsetX;
 		const cy = y + offsetY;
-		const stroke = upgrade ? (RARITY_STROKE[upgrade.Rarity] ?? '#888') : '#444';
+		const stroke = upgrade ? (rarityColor(upgrade.Rarity) ?? '#888') : '#444';
 
 		hexes.push(
 			`<polygon points="${hexCornersAt(cx, cy)}" fill="${HEX_FILL}" stroke="${stroke}" stroke-width="${STROKE_WIDTH}" stroke-linejoin="round" />`

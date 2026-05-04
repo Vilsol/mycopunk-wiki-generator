@@ -1,10 +1,14 @@
-// Upgrade entity: formatter context, enrichment lookups, changelog assembly,
-// related-pages template, and upload classifier config. The generation script
-// (`scripts/generate-upgrade-source.ts`) and the generic uploaders consume
-// this module so all upgrade-specific knowledge lives in one place.
+// Upgrade entity: loader, identification, formatter context, enrichment
+// lookups, changelog assembly, related-pages template, and registry.
 
 import fs from 'node:fs';
-import { getPropertyStatRows, convertCode, convertCodeWiki } from '../upgrades/utils';
+import {
+	getPropertyStatRows,
+	convertCode,
+	convertCodeWiki,
+	gunMappings,
+	parseRGBA
+} from '../upgrades/utils';
 import type { GenericGunUpgrade, DataDump } from '../upgrades/types';
 import type { AuthItem, SkillTreeNode } from '../data/schema.d';
 import type { ChangeRecord, IndexEntry } from '../dump-types';
@@ -12,11 +16,68 @@ import { fetchManifest, fetchVersionDump, dumpCachePath } from '../dump-cache';
 import { cachedDiff } from '../dump-diff-cache';
 import { renderChangelogSection } from '../changelog-renderer';
 import { readDump } from '../dump';
-import { escapeWikiText, stripHtml } from '../wiki-text';
-import { loadUpgrades, safeFilename, displayFilename, mapGunName } from '../load-upgrades';
-import type { EntityClassifierConfig } from '../upload-pipeline';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
+import { defineEntity, lazyLoad } from '../entity-registry';
 
 type SkillTreeNodeWithChar = SkillTreeNode & { character: string };
+
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+// Returns ALL upgrades including cosmetics. Most consumers want the
+// non-cosmetic subset — that's what the registry's `loadItems` returns.
+// `loadAllUpgrades()` is for cross-entity inversions (skill trees, skins,
+// rarity tables) that need every entry.
+export function loadUpgrades(): GenericGunUpgrade[] {
+	const data = readDump();
+	if (!data?.upgrades || typeof data.upgrades !== 'object') {
+		throw new Error(`Invalid data.json shape: expected an object with an 'upgrades' property`);
+	}
+	return Object.values(data.upgrades) as GenericGunUpgrade[];
+}
+
+// Excludes cosmetics — what skins/upgrades-as-pages actually want. Cosmetic
+// "upgrades" are skin variants; their `Name`s collide on the wiki ("Factory"
+// applies to 23 gears, etc.) and they have no meaningful stat data, so they'd
+// produce near-empty pages that overwrite each other. The `skins` entity
+// catalogs those properly.
+export function loadGameplayUpgrades(): GenericGunUpgrade[] {
+	return loadUpgrades().filter((u) => u.UpgradeType !== 'Cosmetic');
+}
+
+export function safeFilename(upgrade: GenericGunUpgrade): string {
+	if (!upgrade.APIName || !/[a-zA-Z0-9]/.test(upgrade.APIName)) {
+		return `upgrade_${upgrade.ID}`;
+	}
+	return sanitizeAPIName(upgrade.APIName);
+}
+
+// Display-name-based filename, used for upgrade-facing assets (icons, patterns)
+// uploaded to the wiki. Falls back to `upgrade_<ID>` when the display name has
+// no usable characters.
+export function displayFilename(upgrade: GenericGunUpgrade): string {
+	if (!upgrade.Name || !/[a-zA-Z0-9]/.test(upgrade.Name)) {
+		return `upgrade_${upgrade.ID}`;
+	}
+	return normalizeWikiTitle(sanitizeAPIName(upgrade.Name));
+}
+
+// `ApplicableTo[].Name` is "<DisplayName> (<C# class>)". Strip the parens
+// suffix, then remap a few legacy display names that the wiki shows under a
+// different title (see `gunMappings`).
+export function mapGunName(rawName: string): string {
+	const stripped = rawName.split(' (')[0];
+	return gunMappings[stripped] ?? stripped;
+}
+
+export function upgradePageTitle(upgrade: GenericGunUpgrade): string {
+	return `${stripHtml(upgrade.Name)} Upgrade`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Enrichment lookups
+// ─────────────────────────────────────────────────────────────────────────
 
 export interface UpgradeEnrichment {
 	authItemsByUpgradeID: Map<string, AuthItem>;
@@ -24,11 +85,6 @@ export interface UpgradeEnrichment {
 	upgradeNamesByID: Map<string, string>;
 }
 
-// Build per-upgrade lookups from the dump for the cross-reference fields:
-//   - authItems redemption-code items
-//   - skill-tree node placement (every UpgradeTree-source upgrade is in
-//     exactly one character's skill tree)
-//   - upgrade ID → display name (resolves SkillTreeNode.MustBeUnlockedFirst)
 export function loadUpgradeEnrichment(): UpgradeEnrichment {
 	const data = readDump();
 
@@ -115,10 +171,6 @@ function buildAcquisitionSection(
 	return lines.join('\n');
 }
 
-export function upgradePageTitle(upgrade: GenericGunUpgrade): string {
-	return `${stripHtml(upgrade.Name)} Upgrade`;
-}
-
 function generatePropertiesSection(upgrade: GenericGunUpgrade): string {
 	if (!upgrade.Properties || upgrade.Properties.length === 0) return '';
 
@@ -163,7 +215,14 @@ function humanizeUpgradeType(t: string): string | null {
 	return t;
 }
 
-export function buildUpgradeContext(
+// ─────────────────────────────────────────────────────────────────────────
+// Context builder (memoizes enrichment + changelog history)
+// ─────────────────────────────────────────────────────────────────────────
+
+const getEnrichment = lazyLoad(loadUpgradeEnrichment);
+const getHistory = lazyLoad(loadUpgradeChangelogHistory); // returns Promise — caller awaits
+
+export function buildUpgradeContextSync(
 	upgrade: GenericGunUpgrade,
 	enrichment: UpgradeEnrichment,
 	changelog: string
@@ -193,10 +252,19 @@ export function buildUpgradeContext(
 	};
 }
 
-// `Template:Related Pages` content — the cross-page navigation block every
-// upgrade page transcludes via `{{Related Pages}}`. Built from `data.gears`
-// + `data.characters` so adding a new gear in a future game patch propagates
-// to every upgrade page after one bot rerun + one template upload.
+export async function buildUpgradeContext(
+	upgrade: GenericGunUpgrade
+): Promise<Record<string, unknown>> {
+	const enrichment = getEnrichment();
+	const history = await getHistory();
+	const changelog = renderChangelogSection(history.get(String(upgrade.ID)) ?? [], upgrade);
+	return buildUpgradeContextSync(upgrade, enrichment, changelog);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Related-pages template (extra file emitted alongside source pages)
+// ─────────────────────────────────────────────────────────────────────────
+
 export function buildRelatedPagesTemplate(): string {
 	const data = readDump() as unknown as {
 		gears: Record<string, { Name: string; GearType: string }>;
@@ -260,9 +328,10 @@ export function buildRelatedPagesTemplate(): string {
 	].join('\n');
 }
 
-// Walk every adjacent version pair in the hosted manifest, compute the diff
-// for each (memoized to disk), and invert the result into a per-upgrade
-// `ChangeRecord[]` keyed by upgrade ID.
+// ─────────────────────────────────────────────────────────────────────────
+// Changelog history
+// ─────────────────────────────────────────────────────────────────────────
+
 export async function loadUpgradeChangelogHistory(): Promise<Map<string, ChangeRecord[]>> {
 	const out = new Map<string, ChangeRecord[]>();
 	let manifestVersions: IndexEntry[] = [];
@@ -338,15 +407,12 @@ export async function loadUpgradeChangelogHistory(): Promise<Map<string, ChangeR
 		}
 	}
 
-	// Synthesize a baseline `* Added.` record for every upgrade present in the
-	// oldest version we know about that has no other history entries. Reads as
-	// "stable since at least vX" rather than "this page has no changelog data".
 	const oldestEntry = oldestFirst[0];
 	let oldestDump: DataDump | null = null;
 	try {
 		oldestDump = loadDump(oldestEntry.version);
 	} catch {
-		// Fall back gracefully: no synthesized baseline if we can't load it.
+		// no synthesized baseline if we can't load
 	}
 	if (oldestDump) {
 		const oldestIDs = new Set(Object.keys(oldestDump.upgrades ?? {}));
@@ -367,7 +433,6 @@ export async function loadUpgradeChangelogHistory(): Promise<Map<string, ChangeR
 	return out;
 }
 
-// Render the changelog section for a single upgrade given pre-loaded history.
 export function renderUpgradeChangelog(
 	history: Map<string, ChangeRecord[]>,
 	upgrade: GenericGunUpgrade
@@ -375,12 +440,22 @@ export function renderUpgradeChangelog(
 	return renderChangelogSection(history.get(String(upgrade.ID)) ?? [], upgrade);
 }
 
-// Classifier config for the host-page uploader. Knows which sections are
-// curator-territory, which placeholder phrases to ignore, etc.
-export const UPGRADE_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''Add additional acquisition details here.''`, `''To be written.''`],
-	cannedAcquisitionPhrases: new Set(
-		[
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<GenericGunUpgrade>({
+	name: 'upgrades',
+	dumpKey: 'upgrades',
+	loadItems: loadGameplayUpgrades,
+	safeFilename,
+	displayFilename,
+	pageTitle: upgradePageTitle,
+	identLabel: (u) => `${u.APIName} (ID: ${u.ID})`,
+	infoboxDescription: (u) => u.Description ?? '',
+	classifier: {
+		placeholderPhrases: [`''Add additional acquisition details here.''`, `''To be written.''`],
+		cannedAcquisitionPhrases: [
 			'unlocked from the upgrade tree.',
 			"earned through the gear's upgrade tree.",
 			'drops randomly from any source.',
@@ -388,16 +463,50 @@ export const UPGRADE_CLASSIFIER_CONFIG: EntityClassifierConfig = {
 			'awarded as a special drop.',
 			'hidden in the upgrade browser until obtained.',
 			'hidden from the upgrade browser.'
-		].map((s) => s.toLowerCase())
-	),
-	curatorOnlySections: new Set(
-		['mechanics', 'synergies', 'changelog', 'trivia', 'notes', 'bugs', 'lore'].map((s) =>
-			s.toLowerCase()
-		)
-	),
-	autoGenSections: new Set(['statistics', 'stats', 'properties', 'properties and stats']),
-	infoboxStripPattern: /\{\{Upgrade Infobox[\s\S]*?\}\}/g
-};
-
-// Re-exports so callers can `import * from './entities/upgrades'`
-export { loadUpgrades, safeFilename, displayFilename, mapGunName };
+		],
+		curatorOnlySections: ['mechanics', 'synergies', 'changelog', 'trivia', 'notes', 'bugs', 'lore'],
+		autoGenSections: ['statistics', 'stats', 'properties', 'properties and stats'],
+		infoboxStripPattern: /\{\{Upgrade Infobox[\s\S]*?\}\}/g
+	},
+	templateName: 'upgrade-source.wiki',
+	skeletonTemplateName: 'upgrade-skeleton.wiki',
+	contextBuilder: buildUpgradeContext,
+	extraFiles: () => ({ '_Template_Related_Pages.wiki': buildRelatedPagesTemplate() }),
+	fileTypes: [
+		{
+			kind: 'icon',
+			sourceDirKind: 'icons',
+			suffix: '_Icon.png',
+			localFilename: (u) => `${displayFilename(u)}_Icon.png`,
+			targetFilename: (u) => `${displayFilename(u)}_Icon.png`,
+			description: (u) =>
+				[
+					`'''${u.Name}'''`,
+					'',
+					`Icon for the ${u.Name} upgrade in Mycopunk.`,
+					'',
+					`[[Category:Upgrade Icons]]`
+				].join('\n')
+		},
+		{
+			kind: 'pattern',
+			sourceDirKind: 'svgs',
+			suffix: '_Pattern.svg',
+			localFilename: (u) => `${displayFilename(u)}_Pattern.svg`,
+			targetFilename: (u) => `${displayFilename(u)}_Pattern.svg`,
+			description: (u) =>
+				[
+					`'''${u.Name}'''`,
+					'',
+					`Hex pattern for the ${u.Name} upgrade in Mycopunk.`,
+					'',
+					`[[Category:Upgrade Patterns]]`
+				].join('\n')
+		}
+	],
+	icon: {
+		// Each upgrade is alpha-masked onto a solid rect of its rarity color.
+		getTexture: (u) => u.Icon ?? null,
+		getTintColor: (u) => (u.Color ? parseRGBA(u.Color) : null)
+	}
+});

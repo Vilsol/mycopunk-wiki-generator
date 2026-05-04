@@ -11,6 +11,7 @@
 //     this mission
 
 import type {
+	MissionEntry as SchemaMissionEntry,
 	ObjectiveEntry,
 	LevelUnlockEntry,
 	Directive,
@@ -19,19 +20,58 @@ import type {
 	Localization
 } from '../data/schema.d';
 import { readDump } from '../dump';
-import { escapeWikiText, stripHtml } from '../wiki-text';
-import {
-	loadMissions,
-	displayFilename,
-	missionPageTitle,
-	safeFilename,
-	type MissionEntry
-} from '../load-missions';
-import { rgbaToHex } from './format-utils';
-import { buildRewardsTable } from './reward-utils';
-import type { EntityClassifierConfig } from '../upload-pipeline';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
+import { defineEntity, lazyLoad } from '../entity-registry';
+import { rgbaToHex } from '../format-utils';
+import { buildRewardsTable } from '../reward-utils';
 
-export { loadMissions, displayFilename, missionPageTitle, safeFilename };
+// `PlainName` and `Index` are present on every dump mission entry but the
+// upstream JSON schema doesn't declare them. Extend locally so consumers
+// stay strict-typed without hand-patching the auto-generated schema file.
+export type MissionEntry = SchemaMissionEntry & {
+	PlainName?: string;
+	Index?: number;
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+function isPlaceholderName(m: MissionEntry): boolean {
+	return (m.PlainName ?? '').trim() === '???';
+}
+
+export function loadMissions(): MissionEntry[] {
+	const data = readDump() as unknown as { missions?: Record<string, MissionEntry> };
+	if (!data?.missions || typeof data.missions !== 'object') {
+		throw new Error(`Invalid data.json shape: expected an object with a 'missions' property`);
+	}
+	return Object.values(data.missions)
+		.filter((m) => (m.PlainName ?? m.MissionName ?? m.ID ?? '').trim().length > 0)
+		.sort((a, b) => missionPageTitle(a).localeCompare(missionPageTitle(b)));
+}
+
+export function safeFilename(m: MissionEntry): string {
+	const sanitizedId = sanitizeAPIName(m.ID);
+	if (/[a-zA-Z0-9]/.test(sanitizedId)) return sanitizedId;
+	return `mission_idx${m.Index ?? 0}_${sanitizeAPIName(m.Subclass)}`;
+}
+
+export function displayFilename(m: MissionEntry): string {
+	if (isPlaceholderName(m)) {
+		return normalizeWikiTitle(`Unknown_${sanitizeAPIName(m.Subclass)}`);
+	}
+	const name = (m.PlainName ?? m.MissionName ?? m.ID).trim();
+	if (!/[a-zA-Z0-9]/.test(name)) return safeFilename(m);
+	return normalizeWikiTitle(sanitizeAPIName(name));
+}
+
+export function missionPageTitle(m: MissionEntry): string {
+	if (isPlaceholderName(m)) {
+		return `??? (${m.Subclass})`;
+	}
+	return (m.PlainName ?? m.MissionName ?? m.ID).trim();
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // RawData @ref walking
@@ -431,15 +471,22 @@ function buildVoicelinesSection(
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
-export function buildMissionContext(
-	mission: MissionEntry,
-	objectivesByName: Map<string, ObjectiveEntry>,
-	directivesByRef: Map<string, Directive[]>,
-	globalEventsByRef: Map<string, GlobalEvent[]>,
-	enemyNamesByKey: Map<string, string>,
-	enemiesByLowercasedKey: Map<string, string>,
-	localizationByPrefix: Map<string, Array<{ id: string; text: string }>>
-): Record<string, unknown> {
+// Memoized cross-entity loaders so the registry's single-arg contextBuilder
+// doesn't repay loader cost per mission.
+const getObjectivesByName = lazyLoad(loadObjectivesByName);
+const getDirectivesByRef = lazyLoad(loadDirectivesByMissionRef);
+const getGlobalEventsByRef = lazyLoad(loadGlobalEventsByMissionRef);
+const getEnemyNamesByKey = lazyLoad(loadEnemyNamesByKey);
+const getEnemiesByLowercasedKey = lazyLoad(loadEnemiesByLowercasedKey);
+const getLocalizationByPrefix = lazyLoad(loadLocalizationByPrefix);
+
+export function buildMissionContext(mission: MissionEntry): Record<string, unknown> {
+	const objectivesByName = getObjectivesByName();
+	const directivesByRef = getDirectivesByRef();
+	const globalEventsByRef = getGlobalEventsByRef();
+	const enemyNamesByKey = getEnemyNamesByKey();
+	const enemiesByLowercasedKey = getEnemiesByLowercasedKey();
+	const localizationByPrefix = getLocalizationByPrefix();
 	const flags = splitFlags(mission.MissionFlags);
 	const flagLabels = describeFlags(flags);
 	const stages = buildStagesSection(mission, objectivesByName, enemyNamesByKey);
@@ -503,29 +550,59 @@ export function buildMissionContext(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Classifier config
+// Registry definition
 // ─────────────────────────────────────────────────────────────────────────
 
-export const MISSION_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history', 'bugs'].map((s) =>
-			s.toLowerCase()
-		)
-	),
-	autoGenSections: new Set([
-		'description',
-		'briefing',
-		'voicelines',
-		'stages',
-		'objectives',
-		'rewards',
-		'related',
-		'overview'
-	]),
-	infoboxStripPattern: /\{\{Infobox mission[\s\S]*?\}\}/g
-};
+export const entity = defineEntity<MissionEntry>({
+	name: 'missions',
+	dumpKey: 'missions',
+	loadItems: loadMissions,
+	safeFilename,
+	displayFilename,
+	pageTitle: missionPageTitle,
+	identLabel: (m) => `${m.PlainName ?? m.ID} (${m.ID})`,
+	infoboxDescription: (m) => m.Description ?? '',
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: ['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history', 'bugs'],
+		autoGenSections: [
+			'description',
+			'briefing',
+			'voicelines',
+			'stages',
+			'objectives',
+			'rewards',
+			'related',
+			'overview'
+		],
+		// Strict regex avoids matching "Infobox mission modifier" (the directives
+		// template) when it appears on legacy mission pages.
+		infoboxStripPattern: /\{\{Infobox mission(?! modifier)[\s\S]*?\}\}/g
+	},
+	templateName: 'mission-source.wiki',
+	skeletonTemplateName: 'mission-skeleton.wiki',
+	contextBuilder: buildMissionContext,
+	fileTypes: [
+		{
+			kind: 'icon',
+			sourceDirKind: 'icons',
+			suffix: '_Icon.png',
+			localFilename: (m) => `${displayFilename(m)}_Icon.png`,
+			targetFilename: (m) => `${displayFilename(m)}_Icon.png`,
+			description: (m) =>
+				[
+					`'''${m.PlainName ?? m.ID}'''`,
+					'',
+					`Icon for the ${m.PlainName ?? m.ID} mission in Mycopunk.`,
+					'',
+					`[[Category:Mission Icons]]`
+				].join('\n')
+		}
+	],
+	icon: {
+		getTexture: (m) => m.Icon ?? null
+	}
+});
 
 export function loadMissionGenerationData() {
 	return {

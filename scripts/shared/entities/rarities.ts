@@ -7,18 +7,44 @@ import type { RarityEntry, DUnlockCost } from '../data/schema.d';
 import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
 import { escapeWikiText, stripHtml } from '../wiki-text';
-import {
-	loadRarities,
-	displayFilename,
-	rarityDisplay,
-	rarityPageTitle,
-	safeFilename
-} from '../load-rarities';
-import { loadUpgrades } from '../load-upgrades';
-import { rgbaToHex } from './format-utils';
-import type { EntityClassifierConfig } from '../upload-pipeline';
+import { defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
+import { loadUpgrades } from './upgrades';
+import { rgbaToHex } from '../format-utils';
+import { parseRGBA } from '../upgrades/utils';
+import { RARITY_ORDER_LOWER, rarityDisplay as displayRarity } from '../rarity-display';
 
-export { loadRarities, displayFilename, rarityDisplay, rarityPageTitle, safeFilename };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+// Stable sort by power tier.
+export const loadRarities = loadFromDump<RarityEntry>({
+	dumpKey: 'rarities',
+	sort: (a, b) => {
+		const ai = RARITY_ORDER_LOWER.indexOf(a.Name);
+		const bi = RARITY_ORDER_LOWER.indexOf(b.Name);
+		return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+	}
+});
+
+// Title-Case the dump's lowercased rarity names: "exotic" → "Exotic".
+export function rarityDisplay(r: RarityEntry): string {
+	return displayRarity(r.Name);
+}
+
+export function safeFilename(r: RarityEntry): string {
+	return r.Name;
+}
+
+export function displayFilename(r: RarityEntry): string {
+	return `${rarityDisplay(r)}_Rarity`;
+}
+
+// Page titles get a " Rarity" suffix to avoid collision with adjective uses
+// (e.g. `Rare` could plausibly mean a category page).
+export function rarityPageTitle(r: RarityEntry): string {
+	return `${rarityDisplay(r)} Rarity`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Cost-list rendering
@@ -74,12 +100,11 @@ function buildUpgradesTable(upgrades: GenericGunUpgrade[] | undefined): string {
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
-export function buildRarityContext(
-	rarity: RarityEntry,
-	upgradesByRarity: Map<string, GenericGunUpgrade[]>
-): Record<string, unknown> {
+const getUpgradesByRarity = lazyLoad(loadUpgradesByRarity);
+
+export function buildRarityContext(rarity: RarityEntry): Record<string, unknown> {
 	const display = rarityDisplay(rarity);
-	const upgrades = upgradesByRarity.get(rarity.Name) ?? [];
+	const upgrades = getUpgradesByRarity().get(rarity.Name) ?? [];
 
 	return {
 		name: escapeWikiText(display),
@@ -101,24 +126,56 @@ export function buildRarityContext(
 	};
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Classifier config
-// ─────────────────────────────────────────────────────────────────────────
-
-export const RARITY_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history'].map((s) => s.toLowerCase())
-	),
-	autoGenSections: new Set(['costs', 'upgrades', 'overview']),
-	infoboxStripPattern: /\{\{Infobox rarity[\s\S]*?\}\}/g
-};
-
 export function loadRarityGenerationData() {
 	return {
 		rarities: loadRarities(),
-		upgradesByRarity: loadUpgradesByRarity(),
+		upgradesByRarity: getUpgradesByRarity(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<RarityEntry>({
+	name: 'rarities',
+	dumpKey: 'rarities',
+	loadItems: loadRarities,
+	safeFilename,
+	displayFilename,
+	pageTitle: rarityPageTitle,
+	identLabel: (r) => r.Name,
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: ['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history'],
+		autoGenSections: ['costs', 'upgrades', 'overview'],
+		infoboxTemplateName: 'Infobox rarity'
+	},
+	templateName: 'rarity-source.wiki',
+	skeletonTemplateName: 'rarity-skeleton.wiki',
+	contextBuilder: buildRarityContext,
+	fileTypes: [
+		{
+			kind: 'icon',
+			sourceDirKind: 'icons',
+			suffix: '_Icon.png',
+			localFilename: (r) => `${displayFilename(r)}_Icon.png`,
+			targetFilename: (r) => `${displayFilename(r)}_Icon.png`,
+			description: (r) =>
+				[
+					`'''${rarityDisplay(r)}'''`,
+					'',
+					`Icon for the ${rarityDisplay(r)} rarity tier in Mycopunk.`,
+					'',
+					`[[Category:Rarity Icons]]`
+				].join('\n')
+		}
+	],
+	icon: {
+		getTexture: (r) => r.Icon ?? null,
+		// All rarities share the same `Hex Icons` sprite at the same rect — the
+		// game tints them with `RarityEntry.Color` at runtime. Mirror that here.
+		getTintColor: (r) => (r.Color ? parseRGBA(r.Color) : null)
+	}
+});

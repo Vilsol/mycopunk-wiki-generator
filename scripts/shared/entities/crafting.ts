@@ -1,16 +1,42 @@
 // Crafting singleton: the one CraftingWindow prefab's full price table.
+// Wrapped in a one-element array so it plugs into the per-entity pipeline
+// without special-casing.
 
-import type { DUnlockCost } from '../data/schema.d';
+import type { Crafting, DUnlockCost } from '../data/schema.d';
 import { readDump } from '../dump';
-import {
-	loadCrafting,
-	type CraftingSingleton,
-	craftingPageTitle,
-	safeFilename
-} from '../load-crafting';
-import type { EntityClassifierConfig } from '../upload-pipeline';
+import { defineEntity } from '../entity-registry';
 
-export { loadCrafting, craftingPageTitle, safeFilename };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface CraftingSingleton extends Crafting {
+	id: 'crafting';
+}
+
+export function loadCrafting(): CraftingSingleton[] {
+	const data = readDump() as unknown as { crafting?: Crafting };
+	if (!data?.crafting || typeof data.crafting !== 'object') {
+		throw new Error(`Invalid data.json shape: expected a 'crafting' singleton object`);
+	}
+	return [{ ...data.crafting, id: 'crafting' }];
+}
+
+export function safeFilename(): string {
+	return 'crafting';
+}
+
+export function displayFilename(): string {
+	return 'Crafting';
+}
+
+export function craftingPageTitle(): string {
+	return 'Crafting';
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Context builder
+// ─────────────────────────────────────────────────────────────────────────
 
 function renderCostList(costs: DUnlockCost[] | undefined): string {
 	if (!costs || costs.length === 0) return '—';
@@ -51,19 +77,33 @@ export function buildCraftingContext(c: CraftingSingleton): Record<string, unkno
 	};
 }
 
-export const CRAFTING_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history'].map((s) => s.toLowerCase())
-	),
-	autoGenSections: new Set(['costs', 'crafting costs', 'overview']),
-	infoboxStripPattern: /\{\{Infobox crafting[\s\S]*?\}\}/g
-};
-
 export function loadCraftingGenerationData() {
 	return {
 		crafting: loadCrafting(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<CraftingSingleton>({
+	name: 'crafting',
+	dumpKey: 'crafting', // singleton — loadFromDump not used; loadCrafting wraps it
+	loadItems: loadCrafting,
+	safeFilename,
+	displayFilename,
+	pageTitle: craftingPageTitle,
+	identLabel: () => 'crafting',
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: ['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history'],
+		autoGenSections: ['costs', 'crafting costs', 'overview'],
+		infoboxTemplateName: 'Infobox crafting'
+	},
+	templateName: 'crafting-source.wiki',
+	skeletonTemplateName: 'crafting-skeleton.wiki',
+	contextBuilder: buildCraftingContext
+	// no fileTypes — crafting has no icon
+});

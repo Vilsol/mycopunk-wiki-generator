@@ -1,29 +1,40 @@
-// Collectable entity: formatter context + reward (always a single upgrade).
+// Collectable entity: loader, identification, rewards table, registry.
 
 import type { Collectable } from '../data/schema.d';
-import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
-import { escapeWikiText } from '../wiki-text';
-import {
-	loadCollectables,
-	displayFilename,
-	collectablePageTitle,
-	safeFilename
-} from '../load-collectables';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName } from '../wiki-text';
+import { defaultIconFileType, defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
 import { loadUpgradesByID } from './characters';
-import type { EntityClassifierConfig } from '../upload-pipeline';
-import { buildRewardsTable } from './reward-utils';
+import { buildRewardsTable } from '../reward-utils';
 
-export { loadCollectables, displayFilename, collectablePageTitle, safeFilename };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+export const loadCollectables = loadFromDump<Collectable>({ dumpKey: 'collectables' });
+
+export function safeFilename(c: Collectable): string {
+	return sanitizeAPIName(c.ID);
+}
+
+export function displayFilename(c: Collectable): string {
+	const name = c.Name || c.ID;
+	if (!/[a-zA-Z0-9]/.test(name)) return sanitizeAPIName(c.ID);
+	return normalizeWikiTitle(sanitizeAPIName(name));
+}
+
+export function collectablePageTitle(c: Collectable): string {
+	return c.Name || c.ID;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
-export function buildCollectableContext(
-	c: Collectable,
-	upgradesByID: Map<string, GenericGunUpgrade>
-): Record<string, unknown> {
+const getUpgradesByID = lazyLoad(loadUpgradesByID);
+
+export function buildCollectableContext(c: Collectable): Record<string, unknown> {
+	const upgradesByID = getUpgradesByID();
 	const rewardsSection = buildRewardsTable(c.Rewards, { upgradesByID });
 
 	const punchText = (c.PunchText ?? '').trim();
@@ -41,24 +52,44 @@ export function buildCollectableContext(
 	};
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Classifier config
-// ─────────────────────────────────────────────────────────────────────────
-
-export const COLLECTABLE_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'locations', 'tips', 'trivia', 'notes', 'patch history'].map((s) => s.toLowerCase())
-	),
-	autoGenSections: new Set(['rewards', 'overview']),
-	infoboxStripPattern: /\{\{Infobox collectable[\s\S]*?\}\}/g
-};
-
 export function loadCollectableGenerationData() {
 	return {
 		collectables: loadCollectables(),
-		upgradesByID: loadUpgradesByID(),
+		upgradesByID: getUpgradesByID(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<Collectable>({
+	name: 'collectables',
+	dumpKey: 'collectables',
+	loadItems: loadCollectables,
+	safeFilename,
+	displayFilename,
+	pageTitle: collectablePageTitle,
+	identLabel: (c) => `${c.ID} (${c.Name ?? '(no name)'})`,
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: ['lore', 'locations', 'tips', 'trivia', 'notes', 'patch history'],
+		autoGenSections: ['rewards', 'overview'],
+		infoboxTemplateName: 'Infobox collectable'
+	},
+	templateName: 'collectable-source.wiki',
+	skeletonTemplateName: 'collectable-skeleton.wiki',
+	contextBuilder: buildCollectableContext,
+	fileTypes: [
+		defaultIconFileType<Collectable>({
+			displayFilename,
+			prettyName: (c) => c.Name ?? c.ID,
+			categoryName: 'Collectable Icons',
+			entityLabelSingular: 'collectable'
+		})
+	],
+	icon: {
+		getTexture: (c) => c.Icon ?? null
+	}
+});

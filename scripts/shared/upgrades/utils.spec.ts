@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
 import { getPropertyStats, getStatsFromProperty } from './utils';
-import { loadUpgrades } from '../load-upgrades';
+import { loadUpgrades } from '../entities/upgrades';
 
 const upgradesData = loadUpgrades();
 

@@ -1,20 +1,37 @@
-// Upgrade-preset entity: catalog page for each `UpgradePreset` SO. Cross-refs
-// every cosmetic upgrade whose `Skin.Modifiers[].Preset` references this preset.
+// Upgrade-preset entity: loader, identification, catalog page for each
+// `UpgradePreset` SO. Cross-refs every cosmetic upgrade whose
+// `Skin.Modifiers[].Preset` references this preset.
 
 import type { UpgradePresetEntry } from '../data/schema.d';
 import { readDump } from '../dump';
-import { escapeWikiText, stripHtml } from '../wiki-text';
-import {
-	loadUpgradePresets,
-	displayFilename,
-	presetPageTitle,
-	safeFilename
-} from '../load-upgrade-presets';
-import { loadSkins, skinPageTitle, type Skin } from '../load-skins';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
+import { defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
+import { loadSkins, skinPageTitle, type Skin } from './skins';
 import { buildModifiersTable, loadParentLookup, parentLink } from './skins';
-import type { EntityClassifierConfig } from '../upload-pipeline';
 
-export { loadUpgradePresets, displayFilename, presetPageTitle, safeFilename };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+export const loadUpgradePresets = loadFromDump<UpgradePresetEntry>({
+	dumpKey: 'upgradePresets',
+	sort: (a, b) => (a.Name ?? '').localeCompare(b.Name ?? '')
+});
+
+export function safeFilename(p: UpgradePresetEntry): string {
+	return sanitizeAPIName(p.Name ?? '');
+}
+
+export function displayFilename(p: UpgradePresetEntry): string {
+	return normalizeWikiTitle(sanitizeAPIName(`${p.Name}_Preset`));
+}
+
+// Match wiki convention used for directives ("<name> Mission Modifier"): a
+// human-readable suffix avoids collisions with bare adjectives like "Topaz"
+// that may have other uses.
+export function presetPageTitle(p: UpgradePresetEntry): string {
+	return `${p.Name} Skin Preset`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Inversion: preset name → skins that reference it.
@@ -74,11 +91,12 @@ interface ModifierRowable {
 	[k: string]: unknown;
 }
 
-export function buildPresetContext(
-	preset: UpgradePresetEntry,
-	skinsByPreset: Map<string, Skin[]>,
-	allPresets: Map<string, UpgradePresetEntry>
-): Record<string, unknown> {
+const getSkinsByPreset = lazyLoad(loadSkinsByPreset);
+const getAllPresets = lazyLoad(() => new Map(loadUpgradePresets().map((p) => [p.Name, p])));
+
+export function buildPresetContext(preset: UpgradePresetEntry): Record<string, unknown> {
+	const skinsByPreset = getSkinsByPreset();
+	const allPresets = getAllPresets();
 	const usedBy = skinsByPreset.get(preset.Name) ?? [];
 	return {
 		name: escapeWikiText(preset.Name),
@@ -101,21 +119,32 @@ export function buildPresetContext(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Classifier config
+// Registry definition
 // ─────────────────────────────────────────────────────────────────────────
 
-export const PRESET_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(['lore', 'gallery', 'trivia', 'notes'].map((s) => s.toLowerCase())),
-	autoGenSections: new Set(['modifiers', 'used by', 'description', 'overview']),
-	infoboxStripPattern: /\{\{Infobox skin preset[\s\S]*?\}\}/g
-};
+export const entity = defineEntity<UpgradePresetEntry>({
+	name: 'upgrade-presets',
+	dumpKey: 'upgradePresets',
+	loadItems: loadUpgradePresets,
+	safeFilename,
+	displayFilename,
+	pageTitle: presetPageTitle,
+	identLabel: (p) => p.Name,
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: ['lore', 'gallery', 'trivia', 'notes'],
+		autoGenSections: ['modifiers', 'used by', 'description', 'overview'],
+		infoboxTemplateName: 'Infobox skin preset'
+	},
+	templateName: 'upgrade-preset-source.wiki',
+	skeletonTemplateName: 'upgrade-preset-skeleton.wiki',
+	contextBuilder: buildPresetContext
+});
 
 export function loadPresetGenerationData() {
 	return {
 		presets: loadUpgradePresets(),
-		skinsByPreset: loadSkinsByPreset(),
+		skinsByPreset: getSkinsByPreset(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }

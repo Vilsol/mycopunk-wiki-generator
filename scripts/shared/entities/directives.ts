@@ -6,22 +6,70 @@
 // suffix convention.
 
 import type { Directive, DirectivePropertyEntry, TierWeights } from '../data/schema.d';
-import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
-import { escapeWikiText, stripHtml } from '../wiki-text';
-import {
-	loadDirectives,
-	loadDirectiveGroups,
-	displayFilename,
-	directivePageTitle,
-	safeFilename
-} from '../load-directives';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
+import { defineEntity, lazyLoad } from '../entity-registry';
 import { loadUpgradesByID } from './characters';
-import { fmtPct } from './format-utils';
-import { buildRewardsTable } from './reward-utils';
-import type { EntityClassifierConfig } from '../upload-pipeline';
+import { fmtPct } from '../format-utils';
+import { buildRewardsTable } from '../reward-utils';
 
-export { loadDirectives, loadDirectiveGroups, displayFilename, directivePageTitle, safeFilename };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+function variantScore(d: Directive): number {
+	let s = 0;
+	if ((d.AdditionalRewards?.length ?? 0) > 0) s += 100;
+	if (d.CanBeChosen) s += 10;
+	return s;
+}
+
+// Group directives by Name. The dump has tier/region duplicates (5× "Mission
+// Directive", 5× "Ouroboros Operation", etc. — same pattern as Brute enemies).
+// Within a group, the canonical entry is the highest-scoring one; the rest
+// surface in a Variants table on the page.
+export function loadDirectiveGroups(): Map<string, Directive[]> {
+	const data = readDump() as unknown as { directives?: Record<string, Directive> };
+	if (!data?.directives || typeof data.directives !== 'object') {
+		throw new Error(`Invalid data.json shape: expected an object with a 'directives' property`);
+	}
+	const groups = new Map<string, Directive[]>();
+	for (const d of Object.values(data.directives)) {
+		const name = (d.Name ?? '').trim();
+		if (!name) continue;
+		const list = groups.get(name) ?? [];
+		list.push(d);
+		groups.set(name, list);
+	}
+	for (const list of groups.values()) {
+		list.sort((a, b) => variantScore(b) - variantScore(a));
+	}
+	return groups;
+}
+
+export function loadDirectives(): Directive[] {
+	// Canonical entry per name = the first (richest) of each group.
+	return [...loadDirectiveGroups().values()]
+		.map((variants) => variants[0])
+		.sort((a, b) => (a.Name ?? '').localeCompare(b.Name ?? ''));
+}
+
+export function safeFilename(d: Directive): string {
+	if (!d.Name || !/[a-zA-Z0-9]/.test(d.Name)) return `directive_${d.ID}`;
+	return sanitizeAPIName(d.Name);
+}
+
+export function displayFilename(d: Directive): string {
+	const name = d.Name || `directive_${d.ID}`;
+	return normalizeWikiTitle(sanitizeAPIName(name));
+}
+
+// Wiki uses "<Name> Mission Modifier" — there are 35 existing pages with this
+// suffix (e.g. "Bullet Hell Mission Modifier"). We follow the convention so
+// auto-generated pages slot in alongside curator content.
+export function directivePageTitle(d: Directive): string {
+	return `${d.Name ?? `directive_${d.ID}`} Mission Modifier`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Tier weights
@@ -90,9 +138,7 @@ function describeDirectiveText(raw: string | undefined): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Variants table — surfaces stat differences between same-named directive
-// records. Mirrors the enemies pattern: each name maps to one wiki page;
-// variants show as a comparison table below the canonical record's stats.
+// Variants table
 // ─────────────────────────────────────────────────────────────────────────
 
 function tierPctOrEmpty(v: number | undefined): string {
@@ -107,9 +153,6 @@ function flag(v: unknown): string {
 	return '—';
 }
 
-// Some directive properties carry refs like `container.@ref` that point at a
-// missionContainer (e.g. "Overtime Assignment"). When present, this disambiguates
-// otherwise-identical variants.
 function containerRef(p: DirectivePropertyEntry | undefined): string {
 	const raw = p?.Raw as Record<string, unknown> | undefined;
 	const c = raw?.container as { '@ref'?: string } | undefined;
@@ -118,8 +161,6 @@ function containerRef(p: DirectivePropertyEntry | undefined): string {
 }
 
 function buildDirectiveVariantsTable(variants: Directive[]): string {
-	// Build display rows, dedupe on visible content (two records may differ in
-	// fields we don't show — collapse those just like the enemies table does).
 	const seen = new Set<string>();
 	const rows: string[] = [];
 	for (const v of variants) {
@@ -158,19 +199,19 @@ function buildDirectiveVariantsTable(variants: Directive[]): string {
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
-export function buildDirectiveContext(
-	d: Directive,
-	upgradesByID: Map<string, GenericGunUpgrade>,
-	variants: Directive[] = [d]
-): Record<string, unknown> {
+const getUpgradesByID = lazyLoad(loadUpgradesByID);
+const getGroups = lazyLoad(loadDirectiveGroups);
+
+export function buildDirectiveContext(d: Directive): Record<string, unknown> {
+	const upgradesByID = getUpgradesByID();
+	const variants = getGroups().get(d.Name as string) ?? [d];
+
 	const tierTable = buildTierWeightsTable(d.TierWeights);
 	const propertiesSection = buildPropertiesSection(d.Properties);
 	const rewardsSection = buildRewardsTable(d.AdditionalRewards, { upgradesByID });
 	const descText = describeDirectiveText(d.Description);
 	const variantsSection = buildDirectiveVariantsTable(variants);
 
-	// Sum of TierWeights — surface as a quick "rarity" hint. Higher = more
-	// likely to appear in the random pool.
 	const totalWeight = d.TierWeights
 		? (d.TierWeights.Tier1 ?? 0) +
 			(d.TierWeights.Tier2 ?? 0) +
@@ -201,34 +242,64 @@ export function buildDirectiveContext(
 	};
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Classifier config
-// ─────────────────────────────────────────────────────────────────────────
-
-export const DIRECTIVE_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [`''To be written.''`],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history', 'bugs'].map((s) =>
-			s.toLowerCase()
-		)
-	),
-	autoGenSections: new Set([
-		'description',
-		'effects',
-		'properties',
-		'tier weights',
-		'variants',
-		'rewards',
-		'overview'
-	]),
-	infoboxStripPattern: /\{\{Infobox (mission modifier|directive)[\s\S]*?\}\}/g
-};
-
 export function loadDirectiveGenerationData() {
 	return {
 		directives: loadDirectives(),
-		upgradesByID: loadUpgradesByID(),
+		upgradesByID: getUpgradesByID(),
 		gameVersion: (readDump().gameVersion?.Version ?? 'unknown') as string
 	};
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<Directive>({
+	name: 'directives',
+	dumpKey: 'directives',
+	loadItems: loadDirectives,
+	safeFilename,
+	displayFilename,
+	pageTitle: directivePageTitle,
+	identLabel: (d) => `${d.Name} (ID: ${d.ID})`,
+	infoboxDescription: (d) => d.Description ?? '',
+	classifier: {
+		placeholderPhrases: [`''To be written.''`],
+		curatorOnlySections: ['lore', 'strategy', 'tips', 'trivia', 'notes', 'patch history', 'bugs'],
+		autoGenSections: [
+			'description',
+			'effects',
+			'properties',
+			'tier weights',
+			'variants',
+			'rewards',
+			'overview'
+		],
+		// Wiki templates use both "Infobox mission modifier" (preferred) and
+		// "Infobox directive" (legacy). Strip both forms.
+		infoboxStripPattern: /\{\{Infobox (mission modifier|directive)[\s\S]*?\}\}/g
+	},
+	templateName: 'directive-source.wiki',
+	skeletonTemplateName: 'directive-skeleton.wiki',
+	contextBuilder: buildDirectiveContext,
+	fileTypes: [
+		{
+			kind: 'icon',
+			sourceDirKind: 'icons',
+			suffix: '_Icon.png',
+			localFilename: (d) => `${displayFilename(d)}_Icon.png`,
+			targetFilename: (d) => `${displayFilename(d)}_Icon.png`,
+			description: (d) =>
+				[
+					`'''${d.Name}'''`,
+					'',
+					`Icon for the ${d.Name} mission modifier in Mycopunk.`,
+					'',
+					`[[Category:Mission Modifier Icons]]`
+				].join('\n')
+		}
+	],
+	icon: {
+		getTexture: (d) => d.Icon ?? null
+	}
+});

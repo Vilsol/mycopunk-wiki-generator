@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { generateHexGridSVG, DEFAULT_HEX_OPTIONS } from './shared/upgrades/svg-generator.ts';
-import { loadUpgrades, displayFilename } from './shared/load-upgrades.ts';
+import { loadUpgrades, displayFilename } from './shared/entities/upgrades.ts';
 import { ensureDir, entityOutputDir } from './shared/paths.ts';
 
 async function generateUpgradeSVGs() {

@@ -1,25 +1,41 @@
-// Character entity: skill-tree per-tier tables, default-ability resolution
-// from `playerUpgrades`, inverted upgrades-by-character index, default emotes.
+// Character entity: loader, skill-tree per-tier tables, default-ability
+// resolution from `playerUpgrades`, inverted upgrades-by-character index,
+// default emotes, registry definition.
 
 import type { CharacterEntry, QuipEntry, SkillTreeNode } from '../data/schema.d';
 import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
-import { escapeWikiText, stripHtml } from '../wiki-text';
-import {
-	loadCharacters,
-	displayFilename,
-	safeFilename,
-	characterPageTitle
-} from '../load-characters';
-import { loadSkins, skinPageTitle, variantPreviewFilename, type Skin } from '../load-skins';
-import type { EntityClassifierConfig } from '../upload-pipeline';
-import { layoutSkillTree } from './character-skill-tree';
-export { layoutSkillTree } from './character-skill-tree';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
+import { defaultIconFileType, defineEntity, loadFromDump } from '../entity-registry';
+import { loadSkins, skinPageTitle, variantPreviewFilename, type Skin } from './skins';
+import { layoutSkillTree } from '../character-skill-tree';
+import { rarityCell } from '../rarity-display';
+export { layoutSkillTree } from '../character-skill-tree';
 // `import.meta.url` of this module is needed by the layout fn to resolve the
 // upgrade icons directory; callers can pass their own meta URL too.
 const SHARED_META_URL = import.meta.url;
 
-export { loadCharacters, displayFilename, safeFilename, characterPageTitle };
+// ─────────────────────────────────────────────────────────────────────────
+// Loader + identification
+// ─────────────────────────────────────────────────────────────────────────
+
+export const loadCharacters = loadFromDump<CharacterEntry>({
+	dumpKey: 'characters',
+	sort: (a, b) => (a.Index ?? 0) - (b.Index ?? 0)
+});
+
+export function safeFilename(c: CharacterEntry): string {
+	return sanitizeAPIName(c.APIName ?? c.Name ?? '');
+}
+
+export function displayFilename(c: CharacterEntry): string {
+	if (!c.Name || !/[a-zA-Z0-9]/.test(c.Name)) return sanitizeAPIName(c.APIName ?? '');
+	return normalizeWikiTitle(sanitizeAPIName(c.Name));
+}
+
+export function characterPageTitle(c: CharacterEntry): string {
+	return c.Name;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // playerUpgrades lookup: Subclass → entry. Used to resolve a character's
@@ -64,31 +80,6 @@ export function loadUpgradesByID(): Map<string, GenericGunUpgrade> {
 // Skill-tree rendering: group by Layer, format as per-tier bullet tables
 // with MinSpentSkillPointsToUnlock as the layer's gate.
 // ─────────────────────────────────────────────────────────────────────────
-
-const RARITY_COLORS: Record<string, string> = {
-	Standard: 'green',
-	Rare: 'cornflowerblue',
-	Epic: 'magenta',
-	Exotic: 'orange',
-	Oddity: 'red',
-	Contraband: 'purple'
-};
-
-const RARITY_ORDER: Record<string, number> = {
-	Standard: 1,
-	Rare: 2,
-	Epic: 3,
-	Exotic: 4,
-	Oddity: 5,
-	Contraband: 6
-};
-
-function rarityCell(rarity: string): string {
-	const order = RARITY_ORDER[rarity] ?? 99;
-	const color = RARITY_COLORS[rarity];
-	const inner = color ? `<span style="color:${color}">${rarity}</span>` : rarity;
-	return `data-sort-value="${order}" | ${inner}`;
-}
 
 interface ResolvedNode {
 	node: SkillTreeNode;
@@ -489,26 +480,74 @@ export function buildCharacterContext(c: CharacterEntry): Record<string, unknown
 // default; the user merges manually after the first push.
 // ─────────────────────────────────────────────────────────────────────────
 
-export const CHARACTER_CLASSIFIER_CONFIG: EntityClassifierConfig = {
-	placeholderPhrases: [],
-	cannedAcquisitionPhrases: new Set<string>(),
-	curatorOnlySections: new Set(
-		['lore', 'abilities', 'strategy', 'dialogue', 'trivia', 'notes', 'patch history'].map((s) =>
-			s.toLowerCase()
-		)
-	),
-	autoGenSections: new Set([
-		'skill tree',
-		'upgrades',
-		'drop-only upgrades',
-		'other upgrades',
-		'skins',
-		'default emotes',
-		'emotes',
-		'quips'
-	]),
-	// "default emotes" / "emotes" remain in autoGenSections (above) so the
-	// classifier doesn't flag old bot-emitted sections as curator content while
-	// host pages catch up to the merged-into-Quips schema.
-	infoboxStripPattern: /\{\{Infobox character[\s\S]*?\}\}/g
-};
+// ─────────────────────────────────────────────────────────────────────────
+// Registry definition
+// ─────────────────────────────────────────────────────────────────────────
+
+export const entity = defineEntity<CharacterEntry>({
+	name: 'characters',
+	dumpKey: 'characters',
+	loadItems: loadCharacters,
+	safeFilename,
+	displayFilename,
+	pageTitle: characterPageTitle,
+	identLabel: (c) => `${c.APIName ?? c.Name}`,
+	classifier: {
+		placeholderPhrases: [],
+		// Host pages have heavy curator content (lore blockquote, abilities prose,
+		// strategy, dialogue voice lines). Classifier flags any non-empty page as
+		// legacy-edited so we never overwrite by default; users merge manually.
+		curatorOnlySections: [
+			'lore',
+			'abilities',
+			'strategy',
+			'dialogue',
+			'trivia',
+			'notes',
+			'patch history'
+		],
+		// "default emotes" / "emotes" stay in autoGenSections (alongside "quips")
+		// so the classifier doesn't flag old bot-emitted sections as curator
+		// content while host pages catch up to the merged-into-Quips schema.
+		autoGenSections: [
+			'skill tree',
+			'upgrades',
+			'drop-only upgrades',
+			'other upgrades',
+			'skins',
+			'default emotes',
+			'emotes',
+			'quips'
+		],
+		infoboxTemplateName: 'Infobox character'
+	},
+	templateName: 'character-source.wiki',
+	skeletonTemplateName: 'character-skeleton.wiki',
+	contextBuilder: buildCharacterContext,
+	fileTypes: [
+		defaultIconFileType<CharacterEntry>({
+			displayFilename,
+			prettyName: (c) => c.Name,
+			categoryName: 'Character Icons',
+			entityLabelSingular: 'character'
+		}),
+		{
+			kind: 'skill-tree',
+			sourceDirKind: 'svgs',
+			suffix: '_SkillTreeV7.svg',
+			localFilename: (c) => `${displayFilename(c)}_SkillTreeV7.svg`,
+			targetFilename: (c) => `${displayFilename(c)}_SkillTreeV7.svg`,
+			description: (c) =>
+				[
+					`'''${c.Name} skill tree'''`,
+					'',
+					`Auto-generated skill tree map for ${c.Name}. Each node corresponds to an upgrade in the [[${c.Name}]] skill tree.`,
+					'',
+					`[[Category:Character Skill Trees]]`
+				].join('\n')
+		}
+	],
+	icon: {
+		getTexture: (c) => c.Icon ?? null
+	}
+});

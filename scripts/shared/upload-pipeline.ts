@@ -77,81 +77,15 @@ export interface EntityUploadConfig<T> {
 	fileTypes: EntityFileSpec<T>[];
 }
 
-// Resolve an entity name to its config. Each entity registers itself by
-// importing this module and pushing into the registry, but to avoid circular
-// imports we use a lazy lookup table populated on first call.
-type EntityResolver = () => Promise<EntityUploadConfig<unknown>>;
-
-const RESOLVERS: Record<string, EntityResolver> = {
-	upgrades: async () => {
-		const mod = await import('./entities/upgrades-upload-config');
-		return mod.upgradesUploadConfig as EntityUploadConfig<unknown>;
-	},
-	gears: async () => {
-		const mod = await import('./entities/gears-upload-config');
-		return mod.gearsUploadConfig as EntityUploadConfig<unknown>;
-	},
-	'status-effects': async () => {
-		const mod = await import('./entities/status-effects-upload-config');
-		return mod.statusEffectsUploadConfig as EntityUploadConfig<unknown>;
-	},
-	resources: async () => {
-		const mod = await import('./entities/resources-upload-config');
-		return mod.resourcesUploadConfig as EntityUploadConfig<unknown>;
-	},
-	characters: async () => {
-		const mod = await import('./entities/characters-upload-config');
-		return mod.charactersUploadConfig as EntityUploadConfig<unknown>;
-	},
-	enemies: async () => {
-		const mod = await import('./entities/enemies-upload-config');
-		return mod.enemiesUploadConfig as EntityUploadConfig<unknown>;
-	},
-	threats: async () => {
-		const mod = await import('./entities/threats-upload-config');
-		return mod.threatsUploadConfig as EntityUploadConfig<unknown>;
-	},
-	collectables: async () => {
-		const mod = await import('./entities/collectables-upload-config');
-		return mod.collectablesUploadConfig as EntityUploadConfig<unknown>;
-	},
-	rarities: async () => {
-		const mod = await import('./entities/rarities-upload-config');
-		return mod.raritiesUploadConfig as EntityUploadConfig<unknown>;
-	},
-	crafting: async () => {
-		const mod = await import('./entities/crafting-upload-config');
-		return mod.craftingUploadConfig as EntityUploadConfig<unknown>;
-	},
-	directives: async () => {
-		const mod = await import('./entities/directives-upload-config');
-		return mod.directivesUploadConfig as EntityUploadConfig<unknown>;
-	},
-	missions: async () => {
-		const mod = await import('./entities/missions-upload-config');
-		return mod.missionsUploadConfig as EntityUploadConfig<unknown>;
-	},
-	skins: async () => {
-		const mod = await import('./entities/skins-upload-config');
-		return mod.skinsUploadConfig as EntityUploadConfig<unknown>;
-	},
-	'upgrade-presets': async () => {
-		const mod = await import('./entities/upgrade-presets-upload-config');
-		return mod.upgradePresetsUploadConfig as EntityUploadConfig<unknown>;
-	}
-};
-
+// Resolve an entity name to its upload config. Backed by the entity
+// registry (`./entity-registry.ts`) — each entity ships a single
+// `defineEntity({...})` block in its module that the registry exposes.
 export async function resolveEntity(name: string): Promise<EntityUploadConfig<unknown>> {
-	const resolver = RESOLVERS[name];
-	if (!resolver) {
-		throw new Error(`Unknown --entity=${name}. Known: ${Object.keys(RESOLVERS).join(', ')}`);
-	}
-	return resolver();
+	const { getEntity } = await import('./entity-registry');
+	return (await getEntity(name)).uploadConfig;
 }
 
-export function knownEntities(): string[] {
-	return Object.keys(RESOLVERS);
-}
+export { knownEntities } from './entity-registry';
 
 // Helper: pretty-print a relative path for log output.
 export function relPath(p: string): string {

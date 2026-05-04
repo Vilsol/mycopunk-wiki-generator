@@ -20,6 +20,7 @@ const RATE_LIMIT_MS = 1000;
 
 interface CliOptions {
 	entity: string;
+	all: boolean;
 	kindFilter?: string; // e.g. "icon" or "pattern"
 	dryRun: boolean;
 	forceOverwrite: boolean;
@@ -42,17 +43,19 @@ function calculateFileSHA1(filePath: string): string {
 }
 
 function parseArgs(argv: string[]): CliOptions {
-	const opts: CliOptions = { entity: '', dryRun: false, forceOverwrite: false };
+	const opts: CliOptions = { entity: '', all: false, dryRun: false, forceOverwrite: false };
 	for (const arg of argv) {
 		if (arg === '--dry-run') opts.dryRun = true;
 		else if (arg === '--force-overwrite') opts.forceOverwrite = true;
+		else if (arg === '--all') opts.all = true;
 		else if (arg.startsWith('--entity=')) opts.entity = arg.slice('--entity='.length);
 		else if (arg.startsWith('--kind=')) opts.kindFilter = arg.slice('--kind='.length);
 		else if (arg === '--help' || arg === '-h') {
-			console.log(`Usage: bun scripts/upload-files.ts --entity=NAME [options]
+			console.log(`Usage: bun scripts/upload-files.ts (--entity=NAME | --all) [options]
 
-Required:
-  --entity=NAME           Which entity to upload (${knownEntities().join(' | ')})
+Required (one of):
+  --entity=NAME           One entity (${knownEntities().join(' | ')})
+  --all                   Every registered entity that has uploadable files
 
 Options:
   --kind=KIND             Limit to one file kind (e.g. icon, pattern)
@@ -65,19 +68,24 @@ Options:
 			console.warn(`Unknown argument: ${arg}`);
 		}
 	}
-	if (!opts.entity) {
-		console.error(`--entity is required (one of: ${knownEntities().join(', ')})`);
+	if (!opts.entity && !opts.all) {
+		console.error('Pass --entity=<name> or --all.');
 		process.exit(1);
 	}
 	return opts;
 }
 
-async function main() {
-	const options = parseArgs(process.argv.slice(2));
-	const config = (await resolveEntity(options.entity)) as EntityUploadConfig<unknown>;
-	const gameVersion = loadGameVersion();
-	console.log(`Entity: ${config.name}`);
-	console.log(`Game version (from data.json): ${gameVersion}`);
+// Module-level rate limiter so a single `--all` run shares one budget across
+// every entity instead of resetting between them.
+const sharedRateLimit = createRateLimiter(RATE_LIMIT_MS);
+
+async function uploadOne(
+	entityName: string,
+	options: CliOptions,
+	gameVersion: string
+): Promise<{ success: number; errors: number; skipped: number; failed: UploadResult[] }> {
+	const config = (await resolveEntity(entityName)) as EntityUploadConfig<unknown>;
+	console.log(`\n──── ${config.name} ────`);
 
 	const items = config.loadItems();
 
@@ -92,8 +100,10 @@ async function main() {
 		? config.fileTypes.filter((ft) => ft.kind === options.kindFilter)
 		: config.fileTypes;
 	if (fileTypes.length === 0) {
-		console.error(`No file types match --kind=${options.kindFilter}`);
-		process.exit(1);
+		console.log(
+			`(no file types${options.kindFilter ? ` match --kind=${options.kindFilter}` : ''})`
+		);
+		return { success: 0, errors: 0, skipped: 0, failed: [] };
 	}
 
 	for (const spec of fileTypes) {
@@ -102,9 +112,6 @@ async function main() {
 			console.warn(`⚠ ${spec.kind}s directory not found: ${sourceDir}`);
 			continue;
 		}
-		// Build a quick set of files actually present on disk so we don't
-		// fabricate jobs for missing assets (e.g. an upgrade whose icon
-		// extraction failed).
 		const present = new Set(fs.readdirSync(sourceDir).filter((f) => f.endsWith(spec.suffix)));
 		for (const item of items) {
 			const localFile = spec.localFilename(item);
@@ -118,19 +125,12 @@ async function main() {
 	}
 
 	if (jobs.length === 0) {
-		console.error(`No files to upload. Did you run the entity's generators?`);
-		process.exit(1);
+		console.log(`(no files generated yet — skip)`);
+		return { success: 0, errors: 0, skipped: 0, failed: [] };
 	}
 
 	console.log(`Found ${jobs.length} file(s) to upload.`);
-	if (options.dryRun) console.log('🔍 DRY RUN — no uploads will happen');
 
-	if (!options.dryRun) {
-		console.log('Logging in to MediaWiki API…');
-		await loginBot(getProjectRoot(import.meta.url));
-	}
-
-	const rateLimit = createRateLimiter(RATE_LIMIT_MS);
 	const results: UploadResult[] = [];
 	let success = 0;
 	let errors = 0;
@@ -184,7 +184,7 @@ async function main() {
 			const description = spec.description(item);
 			const comment = `Uploaded ${spec.kind} for ${itemLabel} (${gameVersion})\n\n${description}`;
 
-			await rateLimit();
+			await sharedRateLimit();
 			await uploadFile(localPath, targetFilename, comment, true);
 			console.log(`   ✓ uploaded → ${targetFilename}`);
 			results.push({ filename, kind: spec.kind, itemLabel, success: true });
@@ -203,14 +203,44 @@ async function main() {
 		}
 	}
 
-	console.log(`\n=== Summary ===`);
-	console.log(`✓ Uploaded: ${success}`);
-	console.log(`⏭  Skipped:  ${skipped}`);
-	console.log(`✗ Errors:   ${errors}`);
+	const failed = results.filter((r) => !r.success);
+	return { success, errors, skipped, failed };
+}
 
-	if (errors > 0) {
+async function main() {
+	const options = parseArgs(process.argv.slice(2));
+	const gameVersion = loadGameVersion();
+	console.log(`Game version (from data.json): ${gameVersion}`);
+	if (options.dryRun) console.log('🔍 DRY RUN — no uploads will happen');
+
+	if (!options.dryRun) {
+		console.log('Logging in to MediaWiki API…');
+		await loginBot(getProjectRoot(import.meta.url));
+	}
+
+	const targets = options.all ? knownEntities() : [options.entity];
+
+	let totalSuccess = 0;
+	let totalErrors = 0;
+	let totalSkipped = 0;
+	const allFailed: UploadResult[] = [];
+
+	for (const name of targets) {
+		const r = await uploadOne(name, options, gameVersion);
+		totalSuccess += r.success;
+		totalErrors += r.errors;
+		totalSkipped += r.skipped;
+		allFailed.push(...r.failed);
+	}
+
+	console.log(`\n=== Total ===`);
+	console.log(`✓ Uploaded: ${totalSuccess}`);
+	console.log(`⏭  Skipped:  ${totalSkipped}`);
+	console.log(`✗ Errors:   ${totalErrors}`);
+
+	if (totalErrors > 0) {
 		console.log(`\nFailed uploads:`);
-		for (const r of results.filter((r) => !r.success)) {
+		for (const r of allFailed) {
 			console.log(`  - ${r.filename} (${r.kind} for ${r.itemLabel}): ${r.error}`);
 		}
 		process.exit(1);
