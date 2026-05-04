@@ -1,0 +1,75 @@
+<onlyinclude><templatestyles src="Infobox_status_effect/styles.css" /><infobox theme="status-effect-infobox">
+    <title source="name">
+        <format><center>'''{{#if: {{{color|}}} | <span style="color:{{{color}}}">{{{name}}}</span> | {{{name}}} }}'''{{#if: {{{verb|}}} | <br/><span style="font-size: 0.75em; font-style: italic; font-weight: normal;">{{{verb}}} / {{{past_verb}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="stops_regen">
+            <label>Stops Regeneration</label>
+            <format>{{{stops_regen}}}</format>
+        </data>
+        <data source="stages">
+            <label>Stages</label>
+            <format>{{{stages}}}</format>
+        </data>
+        <data source="min_stage">
+            <label>Min Stage</label>
+            <format>{{{min_stage}}}</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>Effect ID</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a status effect (Acid, Fire, Shock, …) in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox status effect
+|name = Display name (e.g. "Acid")
+|api_name = Internal effect ID (e.g. "el_acid")
+|icon = Icon filename
+|color = Hex color of the effect (e.g. "#a8ff2d")
+|verb = Active verb (e.g. "Corrode")
+|past_verb = Past-tense verb (e.g. "Corroded")
+|stops_regen = Yes | No
+|stages = Number of intensity stages
+|min_stage = Stage threshold at which the effect is "applied" (0..1)
+}}
+</pre>
+
+==Example Usage==
+<pre>
+{{Infobox status effect
+|name = Acid
+|api_name = el_acid
+|icon = Acid_icon.png
+|color = #a8ff2d
+|verb = Corrode
+|past_verb = Corroded
+|stops_regen = Yes
+|stages = 5
+|min_stage = 0.72
+}}
+</pre>
+===Result===
+{{Infobox status effect
+|name = Acid
+|api_name = el_acid
+|icon = Acid_icon.png
+|color = #a8ff2d
+|verb = Corrode
+|past_verb = Corroded
+|stops_regen = Yes
+|stages = 5
+|min_stage = 0.72
+}}
+
+[[Category:Templates]]

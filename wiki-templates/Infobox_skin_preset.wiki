@@ -1,0 +1,47 @@
+<onlyinclude><templatestyles src="Infobox_skin_preset/styles.css" /><infobox theme="skin-preset-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''{{#if: {{{name_modifier|}}} | <br/>{{#if: {{{name_modifier_color|}}} | <span style="color:#{{{name_modifier_color}}}; font-size: 0.7em; font-weight: normal;">({{{name_modifier}}})</span> | <span style="font-size: 0.7em; font-weight: normal;">({{{name_modifier}}})</span>}}}}</format>
+    </title>
+    <panel>
+        <data source="modifier_count">
+            <label>Modifiers</label>
+            <format>{{{modifier_count}}}</format>
+        </data>
+        <data source="used_by_count">
+            <label>Used By</label>
+            <format>{{{used_by_count}}} skins</format>
+        </data>
+        <data source="show_name_in_stats">
+            <label>Stats Visible</label>
+            <format>{{{show_name_in_stats}}}</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>SO Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+            <data source="name_modifier">
+                <label>Modifier Slug</label>
+                <format><code>{{{name_modifier}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays an UpgradePreset entry in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox skin preset
+|name = Preset SO name (e.g. "Coppertone")
+|api_name = Same as name (it's the SO asset name)
+|name_modifier = Display suffix slug (e.g. "coppertone")
+|name_modifier_color = Hex color tag for the suffix
+|show_name_in_stats = Yes | No
+|modifier_count = Number of UpgradeProperty entries
+|used_by_count = Number of skins referencing this preset
+}}
+</pre>
+
+[[Category:Templates]]

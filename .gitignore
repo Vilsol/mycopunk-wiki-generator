@@ -1,0 +1,27 @@
+node_modules
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Generated outputs (regeneratable from .dump-cache + scripts)
+/generated-svgs/
+/generated-icons/
+/generated-wiki-source/
+
+# Build/runtime artifacts
+/logs/
+/apicache/
+/.idea/
+/.vscode/
+/.dump-cache/
+/.claude/scheduled_tasks.lock
+
+# Bot credentials (MYCOPUNK_BOT_USER, MYCOPUNK_BOT_PASSWORD)
+/.local.env

@@ -1,0 +1,24 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+
+[[File:<%~ it.showcase %>|thumb|left|400px|<%~ it.name %>]]
+{{#lst:<%= it.pageTitle %>/source|description}}
+<div style="clear:both"></div>
+<% if (it.statsSection) { %>
+== Stats ==
+{{#lst:<%= it.pageTitle %>/source|stats}}
+<% } -%>
+<% if (it.unlocksSection) { %>
+== Level Unlocks ==
+{{#lst:<%= it.pageTitle %>/source|unlocks}}
+<% } -%>
+<% if (it.upgradesSection) { %>
+== Upgrades ==
+{{#lst:<%= it.pageTitle %>/source|upgrades}}
+<% } -%>
+<% if (it.skinsSection) { %>
+== Skin Upgrades ==
+{{#lst:<%= it.pageTitle %>/source|skins}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

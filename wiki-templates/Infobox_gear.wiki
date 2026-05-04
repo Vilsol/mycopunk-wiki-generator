@@ -1,0 +1,79 @@
+<onlyinclude><templatestyles src="Infobox_gear/styles.css" /><infobox theme="gear-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''{{#if: {{{gear_type|}}} | <br/><span class="gear-type-{{{gear_type}}}" style="font-size: 0.7em; font-weight: normal;">{{{gear_type}}}</span>}}{{#if: {{{type_name|}}} | <br/><span style="font-size: 0.75em; font-style: italic; font-weight: normal;">{{{type_name}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="grid_size">
+            <label>Upgrade Grid</label>
+            <format>{{{grid_size}}}</format>
+        </data>
+        <data source="skin_count">
+            <label>Skins</label>
+            <format>{{{skin_count}}}</format>
+        </data>
+        <data source="max_level">
+            <label>Max Level</label>
+            <format>{{{max_level}}}</format>
+        </data>
+        <data source="min_unlock_level">
+            <label>Min Unlock Level</label>
+            <format>{{{min_unlock_level}}}</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a gear (weapon, throwable, utility item, vehicle, or custom equipment) in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox gear
+|name = Display name (e.g. "The Accelerator")
+|api_name = Internal APIName (e.g. "accelerator")
+|gear_type = Primary | Heavy | Throwable | Utility | Vehicle | Custom
+|type_name = Subtype description (e.g. "Accelerating Burst SMG")
+|icon = Icon filename
+|grid_size = Upgrade grid dimensions (e.g. "5×5")
+|skin_count = Number of skins
+|max_level = Max XP level
+|min_unlock_level = Player level required to unlock
+}}
+</pre>
+
+==Example Usage==
+<pre>
+{{Infobox gear
+|name = The Accelerator
+|api_name = accelerator
+|gear_type = Primary
+|type_name = Accelerating Burst SMG
+|icon = The_Accelerator_icon.png
+|grid_size = 5×5
+|skin_count = 12
+|max_level = 30
+|min_unlock_level = 0
+}}
+</pre>
+===Result===
+{{Infobox gear
+|name = The Accelerator
+|api_name = accelerator
+|gear_type = Primary
+|type_name = Accelerating Burst SMG
+|icon = The_Accelerator_icon.png
+|grid_size = 5×5
+|skin_count = 12
+|max_level = 30
+|min_unlock_level = 0
+}}
+
+[[Category:Templates]]

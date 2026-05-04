@@ -1,0 +1,13 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+
+''To be written.''
+
+== Costs ==
+{{#lst:<%= it.pageTitle %>/source|costs}}
+<% if (it.hasUpgradesSection) { %>
+== Upgrades ==
+{{#lst:<%= it.pageTitle %>/source|upgrades}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

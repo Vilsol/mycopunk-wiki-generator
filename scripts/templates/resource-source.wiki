@@ -1,0 +1,49 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox resource
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.rarity) { -%>
+|rarity=<%~ it.rarity %>
+<% } -%>
+<% if (it.max) { -%>
+|max=<%= it.max %>
+<% } -%>
+<% if (it.colorHex) { -%>
+|color=<%~ it.colorHex %>
+<% } -%>
+|is_item=<%~ it.isItem %>
+<% if (it.visibility) { -%>
+|visibility=<%~ it.visibility %>
+<% } -%>
+}}<section end="infobox" />
+
+<section begin="description" /><%~ it.descriptionText %><section end="description" />
+<% if (it.usedByUpgrades) { %>
+<section begin="used_by_upgrades" />
+<%~ it.usedByUpgrades -%>
+<section end="used_by_upgrades" />
+<% } -%>
+<% if (it.usedByGears) { %>
+<section begin="used_by_gears" />
+<%~ it.usedByGears -%>
+<section end="used_by_gears" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Resources]]
+<% if (it.rarity) { -%>
+[[Category:<%= it.rarity %> Resources]]
+<% } -%>
+<% if (it.isItem === 'Yes') { -%>
+[[Category:Items]]
+<% } -%>
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated resource source pages]]

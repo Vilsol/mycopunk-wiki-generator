@@ -1,0 +1,22 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+
+{{#lst:<%= it.pageTitle %>/source|description}}
+<% if (it.propertiesSection) { -%>
+
+== Properties and Stats ==
+{{#lst:<%= it.pageTitle %>/source|properties}}
+<% } -%>
+
+== Acquisition ==
+<% if (it.acquisition) { -%>
+{{#lst:<%= it.pageTitle %>/source|acquisition}}
+<% } -%>
+<% if (it.changelog) { %>
+== Changelog ==
+{{#lst:<%= it.pageTitle %>/source|changelog}}
+<% } -%>
+
+{{Related Pages}}
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

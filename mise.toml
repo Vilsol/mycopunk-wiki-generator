@@ -1,0 +1,458 @@
+[tools]
+bun = "1.2.10"
+python = "3.13.5"
+
+# ──────────────────────────────────────────────────────────────────────
+# Release pipeline — run when a new game version drops.
+#
+#   mise run release           # sync + generate everything (icons, patterns, wiki)
+#   mise run release:upload    # push everything to the wiki (after review)
+#
+# Or run individual stages: release:sync, release:icons, release:patterns,
+# release:source, release:gears, release:upload-files, release:upload-wiki.
+#
+# Prerequisite for icons: extract the new game's Unity assets to
+# ~/MycopunkExtracted/<version>/ExportedProject/Assets/Texture2D using
+# AssetStudio or UABEA. Version comes from data.json's gameVersion.Version.
+# ──────────────────────────────────────────────────────────────────────
+
+[tasks."release:sync"]
+description = "Fetch latest game data dump from mycopunk-data"
+run = "bun scripts/sync-data.ts"
+
+[tasks."release:icons"]
+description = "Extract upgrade icons from spritesheets (auto-resolves version from data.json)"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  echo "  Extract with AssetStudio/UABEA from the game install for $VERSION,"
+  echo "  then re-run: mise run release:icons"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-upgrade-icons.ts "$SPRITES"
+'''
+
+[tasks."release:patterns"]
+description = "Generate upgrade hex-pattern SVGs"
+depends = ["release:sync"]
+run = "bun scripts/generate-upgrade-svgs.ts"
+
+[tasks."release:source"]
+description = "Generate upgrade /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-upgrade-source.ts"
+
+[tasks."release:gears"]
+description = "Generate gear /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-gear-source.ts"
+
+[tasks."release:gear-icons"]
+description = "Extract gear icons from spritesheets (auto-resolves version from data.json)"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  echo "  Extract with AssetStudio/UABEA from the game install for $VERSION,"
+  echo "  then re-run: mise run release:gear-icons"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-gear-icons.ts "$SPRITES"
+'''
+
+[tasks."release:status-effects"]
+description = "Generate status-effect /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-status-effect-source.ts"
+
+[tasks."release:status-effect-icons"]
+description = "Extract status-effect icons from spritesheets"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  echo "  Extract with AssetStudio/UABEA from the game install for $VERSION,"
+  echo "  then re-run: mise run release:status-effect-icons"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-status-effect-icons.ts "$SPRITES"
+'''
+
+[tasks."release:resources"]
+description = "Generate resource /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-resource-source.ts"
+
+[tasks."release:resource-icons"]
+description = "Extract resource icons from spritesheets"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  echo "  Extract with AssetStudio/UABEA from the game install for $VERSION,"
+  echo "  then re-run: mise run release:resource-icons"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-resource-icons.ts "$SPRITES"
+'''
+
+[tasks."release:characters"]
+description = "Generate character /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-character-source.ts"
+
+[tasks."release:character-icons"]
+description = "Extract character icons from spritesheets"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  echo "  Extract with AssetStudio/UABEA from the game install for $VERSION,"
+  echo "  then re-run: mise run release:character-icons"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-character-icons.ts "$SPRITES"
+'''
+
+[tasks."release:character-skill-trees"]
+description = "Render per-character skill-tree SVGs"
+depends = ["release:sync"]
+run = "bun scripts/generate-character-skill-trees.ts"
+
+[tasks."release:enemies"]
+description = "Generate enemy /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-enemy-source.ts"
+
+[tasks."release:threats"]
+description = "Generate threat-tier /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-threat-source.ts"
+
+[tasks."release:threat-icons"]
+description = "Extract threat icons from spritesheets"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  echo "  Extract with AssetStudio/UABEA from the game install for $VERSION,"
+  echo "  then re-run: mise run release:threat-icons"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-threat-icons.ts "$SPRITES"
+'''
+
+[tasks."release:collectables"]
+description = "Generate collectable /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-collectable-source.ts"
+
+[tasks."release:collectable-icons"]
+description = "Extract collectable icons from spritesheets"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-collectable-icons.ts "$SPRITES"
+'''
+
+[tasks."release:rarities"]
+description = "Generate rarity-tier /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-rarity-source.ts"
+
+[tasks."release:rarity-icons"]
+description = "Extract rarity icons from spritesheets"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-rarity-icons.ts "$SPRITES"
+'''
+
+[tasks."release:crafting"]
+description = "Generate the singleton Crafting /source + skeleton page"
+depends = ["release:sync"]
+run = "bun scripts/generate-crafting-source.ts"
+
+[tasks."release:directives"]
+description = "Generate directive (mission modifier) /source + skeleton wiki pages"
+depends = ["release:sync"]
+run = "bun scripts/generate-directive-source.ts"
+
+[tasks."release:directive-icons"]
+description = "Extract directive (mission modifier) icons from spritesheets"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-directive-icons.ts "$SPRITES"
+'''
+
+[tasks."release:missions"]
+description = "Generate mission /source + skeleton wiki pages (with embedded objectives)"
+depends = ["release:sync"]
+run = "bun scripts/generate-mission-source.ts"
+
+[tasks."release:mission-icons"]
+description = "Extract mission icons from spritesheets"
+depends = ["release:sync"]
+run = '''
+VERSION=$(jq -r '.gameVersion.Version' static/data.json)
+SPRITES="$HOME/MycopunkExtracted/$VERSION/ExportedProject/Assets/Texture2D"
+if [ ! -d "$SPRITES" ]; then
+  echo "✗ Spritesheets not found: $SPRITES"
+  exit 1
+fi
+echo "→ Using spritesheets: $SPRITES"
+bun scripts/generate-mission-icons.ts "$SPRITES"
+'''
+
+[tasks."release:skins"]
+description = "Generate skin /source + skeleton wiki pages (one per cosmetic upgrade)"
+depends = ["release:sync"]
+run = "bun scripts/generate-skin-source.ts"
+
+[tasks."release:skin-previews"]
+description = "Build per-variant preview assets (still + 360° webm) from the game's skin-previews directory"
+depends = ["release:sync"]
+run = "bun scripts/generate-skin-previews.ts"
+
+[tasks."release:upgrade-presets"]
+description = "Generate upgrade-preset /source + skeleton wiki pages (Coppertone, Bloodmetal, etc.)"
+depends = ["release:sync"]
+run = "bun scripts/generate-upgrade-preset-source.ts"
+
+[tasks.release]
+description = "Full release: sync data + regenerate every entity (upgrades, gears, status effects, resources, characters, enemies, threats, collectables, rarities, crafting, directives) — pages, icons, patterns"
+depends = [
+  "release:sync",
+  # Upgrades
+  "release:source",
+  "release:icons",
+  "release:patterns",
+  # Gears
+  "release:gears",
+  "release:gear-icons",
+  # Status effects
+  "release:status-effects",
+  "release:status-effect-icons",
+  # Resources
+  "release:resources",
+  "release:resource-icons",
+  # Characters
+  "release:characters",
+  "release:character-icons",
+  "release:character-skill-trees",
+  # Enemies (icons deferred — dump has no icon data for enemies)
+  "release:enemies",
+  # Threats
+  "release:threats",
+  "release:threat-icons",
+  # Collectables
+  "release:collectables",
+  "release:collectable-icons",
+  # Rarities
+  "release:rarities",
+  "release:rarity-icons",
+  # Crafting (singleton, no icon)
+  "release:crafting",
+  # Directives (mission modifiers)
+  "release:directives",
+  "release:directive-icons",
+  # Missions
+  "release:missions",
+  "release:mission-icons",
+  # Skins (per-cosmetic-upgrade pages + per-variant preview assets)
+  "release:skins",
+  "release:skin-previews",
+  # Upgrade presets (Coppertone, Bloodmetal, etc.)
+  "release:upgrade-presets"
+]
+run = '''
+echo ""
+echo "=== Generation complete ==="
+echo "Output is in generated-wiki-source/ (gitignored — regeneratable)."
+echo ""
+echo "Then push to the wiki — run individually or all at once:"
+echo ""
+echo "  Per-entity (each has matching upload-<entity>-files for icons/patterns):"
+echo "    mise run release:upload-wiki                 # upgrades"
+echo "    mise run release:upload-gears                # gears"
+echo "    mise run release:upload-status-effects       # status effects"
+echo "    mise run release:upload-resources            # resources"
+echo "    mise run release:upload-characters           # characters (host pages flagged)"
+echo "    mise run release:upload-enemies              # enemies"
+echo "    mise run release:upload-threats              # threats"
+echo "    mise run release:upload-collectables         # collectables"
+echo "    mise run release:upload-rarities             # rarities"
+echo "    mise run release:upload-crafting             # crafting (singleton)"
+echo "    mise run release:upload-directives           # directives (mission modifiers)"
+echo ""
+echo "  All at once:"
+echo "    mise run release:upload"
+'''
+
+[tasks."release:upload-files"]
+description = "Upload upgrade icons + patterns to the wiki"
+run = "bun scripts/upload-files.ts --entity=upgrades"
+
+[tasks."release:upload-wiki"]
+description = "Upload upgrade /source + skeleton pages, honouring force-overwrite list"
+run = "bun scripts/upload-wiki.ts --entity=upgrades"
+
+[tasks."release:upload-gears"]
+description = "Upload gear /source + skeleton pages, honouring force-overwrite list"
+run = "bun scripts/upload-wiki.ts --entity=gears"
+
+[tasks."release:upload-gear-files"]
+description = "Upload gear icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=gears"
+
+[tasks."release:upload-status-effects"]
+description = "Upload status-effect /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=status-effects"
+
+[tasks."release:upload-status-effect-files"]
+description = "Upload status-effect icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=status-effects"
+
+[tasks."release:upload-resources"]
+description = "Upload resource /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=resources"
+
+[tasks."release:upload-resource-files"]
+description = "Upload resource icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=resources"
+
+[tasks."release:upload-characters"]
+description = "Upload character /source + skeleton pages (host pages will be flagged for manual merge)"
+run = "bun scripts/upload-wiki.ts --entity=characters"
+
+[tasks."release:upload-character-files"]
+description = "Upload character icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=characters"
+
+[tasks."release:upload-enemies"]
+description = "Upload enemy /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=enemies"
+
+[tasks."release:upload-threats"]
+description = "Upload threat-tier /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=threats"
+
+[tasks."release:upload-threat-files"]
+description = "Upload threat icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=threats"
+
+[tasks."release:upload-collectables"]
+description = "Upload collectable /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=collectables"
+
+[tasks."release:upload-collectable-files"]
+description = "Upload collectable icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=collectables"
+
+[tasks."release:upload-rarities"]
+description = "Upload rarity-tier /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=rarities"
+
+[tasks."release:upload-rarity-files"]
+description = "Upload rarity icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=rarities"
+
+[tasks."release:upload-crafting"]
+description = "Upload the Crafting /source + skeleton page"
+run = "bun scripts/upload-wiki.ts --entity=crafting"
+
+[tasks."release:upload-directives"]
+description = "Upload directive (mission modifier) /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=directives"
+
+[tasks."release:upload-directive-files"]
+description = "Upload directive icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=directives"
+
+[tasks."release:upload-missions"]
+description = "Upload mission /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=missions"
+
+[tasks."release:upload-mission-files"]
+description = "Upload mission icons to the wiki"
+run = "bun scripts/upload-files.ts --entity=missions"
+
+[tasks."release:upload-skins"]
+description = "Upload skin /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=skins"
+
+[tasks."release:upload-skin-previews"]
+description = "Upload skin preview assets (jpg stills + webm 360° videos) to the wiki"
+run = "bun scripts/upload-skin-previews.ts"
+
+[tasks."release:upload-upgrade-presets"]
+description = "Upload upgrade-preset /source + skeleton pages"
+run = "bun scripts/upload-wiki.ts --entity=upgrade-presets"
+
+[tasks."release:upload"]
+description = "Upload everything — run after `mise run release`"
+depends = [
+  "release:upload-files",
+  "release:upload-wiki",
+  "release:upload-gear-files",
+  "release:upload-gears",
+  "release:upload-status-effect-files",
+  "release:upload-status-effects",
+  "release:upload-resource-files",
+  "release:upload-resources",
+  "release:upload-character-files",
+  "release:upload-characters",
+  "release:upload-enemies",
+  "release:upload-threat-files",
+  "release:upload-threats",
+  "release:upload-collectable-files",
+  "release:upload-collectables",
+  "release:upload-rarity-files",
+  "release:upload-rarities",
+  "release:upload-crafting",
+  "release:upload-directive-files",
+  "release:upload-directives",
+  "release:upload-mission-files",
+  "release:upload-missions",
+  "release:upload-skin-previews",
+  "release:upload-skins",
+  "release:upload-upgrade-presets"
+]

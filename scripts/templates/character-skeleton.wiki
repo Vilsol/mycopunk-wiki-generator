@@ -1,0 +1,29 @@
+{{CharacterNav}}
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+<% if (it.hasSkillTree) { %>
+== Skill Tree ==
+<% if (it.hasSkillTreeImage) { -%>
+{{#lst:<%= it.pageTitle %>/source|skill_tree_map}}
+
+<% } -%>
+{{#lst:<%= it.pageTitle %>/source|skill_tree}}
+<% } -%>
+<% if (it.upgradesSection) { %>
+== Upgrades ==
+{{#lst:<%= it.pageTitle %>/source|upgrades}}
+<% } -%>
+<% if (it.hasDropOnlyUpgrades) { %>
+== Drop-only Upgrades ==
+{{#lst:<%= it.pageTitle %>/source|drop_only_upgrades}}
+<% } -%>
+<% if (it.hasSkins) { %>
+== Skins ==
+{{#lst:<%= it.pageTitle %>/source|skins}}
+<% } -%>
+<% if (it.hasQuips) { %>
+== Quips ==
+{{#lst:<%= it.pageTitle %>/source|quips}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

@@ -1,0 +1,71 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox character
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.employeeID) { -%>
+|employee_id=<%~ it.employeeID %>
+<% } -%>
+|index=<%= it.index %>
+|playable=<%~ it.isPlayable %>
+<% if (it.maxLevel) { -%>
+|max_level=<%= it.maxLevel %>
+<% } -%>
+<% if (it.minUnlockLevel) { -%>
+|min_unlock_level=<%= it.minUnlockLevel %>
+<% } -%>
+<% if (it.skinCount) { -%>
+|skin_count=<%= it.skinCount %>
+<% } -%>
+<% if (it.defaultAbility) { -%>
+|default_ability=<%~ it.defaultAbility %>
+<% } -%>
+<% if (it.primaryColor) { -%>
+|primary_color=<%~ it.primaryColor %>
+<% } -%>
+<% if (it.textColor) { -%>
+|text_color=<%~ it.textColor %>
+<% } -%>
+}}<section end="infobox" />
+<% if (it.hasSkillTreeImage) { %>
+<section begin="skill_tree_map" />
+<%~ it.skillTreeImage -%>
+<section end="skill_tree_map" />
+<% } -%>
+<% if (it.hasSkillTree) { %>
+<section begin="skill_tree" />
+<%~ it.skillTreeSection -%>
+<section end="skill_tree" />
+<% } -%>
+<% if (it.upgradesSection) { %>
+<section begin="upgrades" />
+<%~ it.upgradesSection -%>
+<section end="upgrades" />
+<% } -%>
+<% if (it.hasDropOnlyUpgrades) { %>
+<section begin="drop_only_upgrades" />
+<%~ it.dropOnlyUpgradesSection -%>
+<section end="drop_only_upgrades" />
+<% } -%>
+<% if (it.hasSkins) { %>
+<section begin="skins" />
+<%~ it.skinsSection -%>
+<section end="skins" />
+<% } -%>
+<% if (it.hasQuips) { %>
+<section begin="quips" />
+<%~ it.quipsSection -%>
+<section end="quips" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Characters]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated character source pages]]

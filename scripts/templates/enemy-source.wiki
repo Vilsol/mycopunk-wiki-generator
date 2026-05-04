@@ -1,0 +1,46 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox enemy
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+<% if (it.internalName) { -%>
+|internal_name=<%~ it.internalName %>
+<% } -%>
+<% if (it.enemyType) { -%>
+|enemy_type=<%~ it.enemyType %>
+<% } -%>
+<% if (it.tagsText) { -%>
+|tags=<%~ it.tagsText %>
+<% } -%>
+|can_be_despawned=<%~ it.canBeDespawned %>
+}}<section end="infobox" />
+<% if (it.hasStatsSection) { %>
+<section begin="stats" />
+<%~ it.statsSection -%>
+<section end="stats" />
+<% } -%>
+<% if (it.hasVariantsSection) { %>
+<section begin="variants" />
+<%~ it.variantsSection -%>
+<section end="variants" />
+<% } -%>
+<% if (it.hasLootSection) { %>
+<section begin="loot" />
+<%~ it.lootSection -%>
+<section end="loot" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Enemies]]
+<% if (it.typeCategory) { -%>
+[[Category:<%= it.typeCategory %>]]
+<% } -%>
+<% for (const tag of it.tags) { -%>
+[[Category:<%= tag %> Enemies]]
+<% } -%>
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated enemy source pages]]

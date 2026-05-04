@@ -1,0 +1,18 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+
+''To be written.''
+<% if (it.hasStatsSection) { %>
+== Stats ==
+{{#lst:<%= it.pageTitle %>/source|stats}}
+<% } -%>
+<% if (it.hasVariantsSection) { %>
+== Variants ==
+{{#lst:<%= it.pageTitle %>/source|variants}}
+<% } -%>
+<% if (it.hasLootSection) { %>
+== Drops ==
+{{#lst:<%= it.pageTitle %>/source|loot}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

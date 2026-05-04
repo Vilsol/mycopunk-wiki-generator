@@ -1,0 +1,11 @@
+# Lockfiles
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb
+
+# Generated output
+scripts/shared/data/schema.d.ts
+generated-wiki-source/
+.dump-cache/

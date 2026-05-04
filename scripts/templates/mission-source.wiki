@@ -1,0 +1,70 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox mission
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.missionType) { -%>
+|mission_type=<%~ it.missionType %>
+<% } -%>
+<% if (it.typeName) { -%>
+|type_name=<%~ it.typeName %>
+<% } -%>
+<% if (it.colorHex) { -%>
+|color=<%~ it.colorHex %>
+<% } -%>
+<% if (it.minLevelToStart) { -%>
+|min_level=<%= it.minLevelToStart %>
+<% } -%>
+<% if (it.minIntensity) { -%>
+|min_intensity=<%= it.minIntensity %>
+<% } -%>
+|extract_at_end=<%~ it.extractAtEnd %>
+|selectable=<%~ it.selectable %>
+<% if (it.flagsList) { -%>
+|flags=<%~ it.flagsList %>
+<% } -%>
+<% if (it.hasBoss) { -%>
+|boss=<%~ it.bossName %>
+<% } -%>
+}}<section end="infobox" />
+<% if (it.hasDescription) { %>
+<section begin="description" /><%~ it.descriptionText %><section end="description" />
+<% } -%>
+<% if (it.hasBriefing) { %>
+<section begin="briefing" /><blockquote>"<%~ it.briefingQuote %>"</blockquote><section end="briefing" />
+<% } -%>
+<% if (it.hasVoicelines) { %>
+<section begin="voicelines" />
+<%~ it.voicelinesSection -%>
+<section end="voicelines" />
+<% } -%>
+<% if (it.hasStages) { %>
+<section begin="stages" />
+<%~ it.stagesSection -%>
+<section end="stages" />
+<% } -%>
+<% if (it.hasRewards) { %>
+<section begin="rewards" />
+<%~ it.rewardsSection -%>
+<section end="rewards" />
+<% } -%>
+<% if (it.hasRelated) { %>
+<section begin="related" />
+<%~ it.relatedSection -%>
+<section end="related" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Missions]]
+<% if (it.hasMissionTypeCategory) { -%>
+[[Category:<%= it.missionType %> Missions]]
+<% } -%>
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated mission source pages]]

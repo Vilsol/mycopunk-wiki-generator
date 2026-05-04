@@ -1,0 +1,51 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %> Rarity
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> rarity icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox rarity
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.colorHex) { -%>
+|color=<%~ it.colorHex %>
+<% } -%>
+<% if (it.bgHex) { -%>
+|background=<%~ it.bgHex %>
+<% } -%>
+<% if (it.scrapResource) { -%>
+|scrap_resource=<%~ it.scrapResource %>
+<% } -%>
+|upgrade_count=<%= it.upgradeCount %>
+}}<section end="infobox" />
+
+<section begin="costs" />
+{| class="wikitable"
+! Cost !! Value
+|-
+| Upgrade Scrip Cost || <%= it.upgradeScripCost %>
+|-
+| Upgrade Rare Resource Cost || <%= it.upgradeRareResourceCost %>
+|-
+| Cleanse Cost (Ouroboros) || <%= it.cleanseCost %>
+|-
+| Craft-New Saxonite Cost || <%= it.craftNewSaxoniteCost %>
+<% if (it.additionalUpgradeCost) { -%>
+|-
+| Additional Upgrade Cost || <%~ it.additionalUpgradeCost %>
+<% } -%>
+|}
+<section end="costs" />
+<% if (it.hasUpgradesSection) { %>
+<section begin="upgrades" />
+<%~ it.upgradesSection -%>
+<section end="upgrades" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Rarities]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated rarity source pages]]

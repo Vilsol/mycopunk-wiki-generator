@@ -1,0 +1,38 @@
+<onlyinclude><templatestyles src="Infobox_collectable/styles.css" /><infobox theme="collectable-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="count">
+            <label>Total Pieces</label>
+            <format>{{{count}}}</format>
+        </data>
+        <data source="punch_text">
+            <label>Punch Line</label>
+            <format>''"{{{punch_text}}}"''</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a world collectable (a set of items players gather to claim a reward) in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox collectable
+|name = Display name (e.g. "Bruiser's Bears")
+|api_name = Internal ID (e.g. "col_bear")
+|count = Total pieces to collect (integer)
+}}
+</pre>
+
+[[Category:Templates]]

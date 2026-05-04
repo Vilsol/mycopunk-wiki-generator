@@ -1,0 +1,19 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+<% if (it.descriptionText) { %>
+{{#lst:<%= it.pageTitle %>/source|description}}
+<% } -%>
+<% if (it.hasModifiers) { %>
+== Modifiers ==
+{{#lst:<%= it.pageTitle %>/source|modifiers}}
+<% } -%>
+<% if (it.hasVariants) { %>
+== Variants ==
+{{#lst:<%= it.pageTitle %>/source|variants}}
+<% } -%>
+<% if (it.hasNameModifiers) { %>
+== Name Modifiers ==
+{{#lst:<%= it.pageTitle %>/source|name_modifiers}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

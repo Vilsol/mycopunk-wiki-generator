@@ -1,0 +1,94 @@
+<onlyinclude><templatestyles src="Infobox_character/styles.css" /><infobox theme="character-infobox">
+    <title source="name">
+        <format><center>'''{{#if: {{{primary_color|}}} | <span style="color:{{{primary_color}}}">{{{name}}}</span> | {{{name}}} }}'''{{#if: {{{employee_id|}}} | <br/><span style="font-size: 0.7em; font-weight: normal;">Employee #{{{employee_id}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="default_ability">
+            <label>Default Ability</label>
+            <format>{{{default_ability}}}</format>
+        </data>
+        <data source="playable">
+            <label>Playable</label>
+            <format>{{{playable}}}</format>
+        </data>
+        <data source="max_level">
+            <label>Max Level</label>
+            <format>{{{max_level}}}</format>
+        </data>
+        <data source="min_unlock_level">
+            <label>Min Unlock Level</label>
+            <format>{{{min_unlock_level}}}</format>
+        </data>
+        <data source="skin_count">
+            <label>Skins</label>
+            <format>{{{skin_count}}}</format>
+        </data>
+        <data source="index">
+            <label>Roster #</label>
+            <format>{{{index}}}</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a playable character in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox character
+|name = Display name (e.g. "Wrangler")
+|api_name = Internal APIName
+|icon = Icon filename
+|employee_id = In-fiction employee number
+|index = Roster position
+|playable = Yes | No
+|max_level = Max XP level
+|min_unlock_level = Player level required to unlock
+|skin_count = Number of skins
+|default_ability = Signature ability name (e.g. "AirDash")
+|primary_color = Hex theme color (e.g. "#ff306f")
+|text_color = Hex text color
+}}
+</pre>
+
+==Example Usage==
+<pre>
+{{Infobox character
+|name = Wrangler
+|api_name = Wrangler
+|icon = Wrangler_icon.png
+|employee_id = 84239756
+|index = 0
+|playable = Yes
+|max_level = 30
+|skin_count = 12
+|default_ability = AirDash
+|primary_color = #ff306f
+|text_color = #ffd6e2
+}}
+</pre>
+===Result===
+{{Infobox character
+|name = Wrangler
+|api_name = Wrangler
+|icon = Wrangler_icon.png
+|employee_id = 84239756
+|index = 0
+|playable = Yes
+|max_level = 30
+|skin_count = 12
+|default_ability = AirDash
+|primary_color = #ff306f
+|text_color = #ffd6e2
+}}
+
+[[Category:Templates]]

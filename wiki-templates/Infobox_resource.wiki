@@ -1,0 +1,70 @@
+<onlyinclude><templatestyles src="Infobox_resource/styles.css" /><infobox theme="resource-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''{{#if: {{{rarity|}}} | <br/><span class="rarity-{{{rarity}}}" style="font-size: 0.7em; font-weight: normal;">{{{rarity}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="max">
+            <label>Max</label>
+            <format>{{{max}}}</format>
+        </data>
+        <data source="is_item">
+            <label>Item</label>
+            <format>{{{is_item}}}</format>
+        </data>
+        <data source="visibility">
+            <label>Visibility</label>
+            <format>{{{visibility}}}</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a resource (currency, crafting material, consumable item) in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox resource
+|name = Display name (e.g. "Saxonite")
+|api_name = Internal ID (e.g. "saxonite")
+|icon = Icon filename
+|rarity = Standard | Rare | Epic | Exotic
+|max = Stack/inventory cap
+|is_item = Yes | No
+|visibility = AlwaysShow | ShowIfAnyOwned | DontShow
+|color = Optional theme color (hex)
+}}
+</pre>
+
+==Example Usage==
+<pre>
+{{Infobox resource
+|name = Saxonite
+|api_name = saxonite
+|icon = Saxonite_icon.png
+|rarity = Epic
+|max = 999
+|is_item = No
+|visibility = AlwaysShow
+}}
+</pre>
+===Result===
+{{Infobox resource
+|name = Saxonite
+|api_name = saxonite
+|icon = Saxonite_icon.png
+|rarity = Epic
+|max = 999
+|is_item = No
+|visibility = AlwaysShow
+}}
+
+[[Category:Templates]]

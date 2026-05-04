@@ -1,0 +1,32 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox threat
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.numberLabel) { -%>
+|number_label=<%~ it.numberLabel %>
+<% } -%>
+<% if (it.tierNum) { -%>
+|tier=<%~ it.tierNum %>
+<% } -%>
+<% if (it.colorHex) { -%>
+|color=<%~ it.colorHex %>
+<% } -%>
+}}<section end="infobox" />
+<% if (it.hasRewardsSection) { %>
+<section begin="rewards" />
+<%~ it.rewardsSection -%>
+<section end="rewards" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Threats]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated threat source pages]]

@@ -1,0 +1,33 @@
+{
+	"name": "mycopunk-wiki-generator",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"check": "tsc --noEmit -p tsconfig.json",
+		"lint": "prettier --check . && eslint .",
+		"format": "prettier --write .",
+		"test": "bun test",
+		"sync:data": "bun scripts/sync-data.ts",
+		"generate:types": "bun scripts/sync-data.ts && json2ts --input .dump-cache/schema.json --output scripts/shared/data/schema.d.ts --no-additionalProperties"
+	},
+	"devDependencies": {
+		"@eslint/compat": "^1.2.5",
+		"@eslint/js": "^9.18.0",
+		"@types/bun": "^1.1.0",
+		"eslint": "^9.18.0",
+		"eslint-config-prettier": "^10.0.1",
+		"globals": "^16.0.0",
+		"json-schema-to-typescript": "^15.0.4",
+		"prettier": "^3.4.2",
+		"sharp": "^0.34.3",
+		"typescript": "^5.0.0",
+		"typescript-eslint": "^8.20.0"
+	},
+	"dependencies": {
+		"colord": "^2.9.3",
+		"eta": "^4.5.0",
+		"ky": "^1.14.2"
+	},
+	"packageManager": "pnpm@10.6.3+sha512.bb45e34d50a9a76e858a95837301bfb6bd6d35aea2c5d52094fa497a467c43f5c440103ce2511e9e0a2f89c3d6071baac3358fc68ac6fb75e2ceb3d2736065e6"
+}

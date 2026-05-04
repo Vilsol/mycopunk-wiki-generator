@@ -1,0 +1,61 @@
+<% if (it.seoDescription) { -%>
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> icon
+|twitter_card=summary
+}}<section end="seo" />
+<% } -%>
+<section begin="infobox" />{{Upgrade Infobox
+|Name=<%~ it.name %>
+|icon=<%~ it.icon %>
+|Rarity=<%~ it.rarity %>
+<% if (it.effectType) { -%>
+|EffectType=<%~ it.effectType %>
+<% } -%>
+<% if (it.upgradeType) { -%>
+|UpgradeType=<%~ it.upgradeType %>
+<% } -%>
+|pattern=<%~ it.pattern %>
+<% it.unlockCosts.forEach((cost, index) => { -%>
+|UnlockCost<%= index + 1 %>_Resource=<%~ cost.Resource %>
+|UnlockCost<%= index + 1 %>_Count=<%= cost.Count %>
+<% }) -%>
+|APIName=<%~ it.apiName %>
+<% if (it.flags) { -%>
+|Flags=<%~ it.flags %>
+<% } -%>
+<% if (it.applicableTo) { -%>
+|ApplicableTo=<%~ it.applicableTo %>
+<% } -%>
+}}<section end="infobox" />
+
+<section begin="description" /><%~ it.descriptionText %><section end="description" />
+<% if (it.propertiesSection) { %>
+<section begin="properties" />
+<%~ it.propertiesSection -%>
+<section end="properties" />
+<% } -%>
+<% if (it.acquisition) { %>
+<section begin="acquisition" /><%~ it.acquisition %><section end="acquisition" />
+<% } -%>
+<% if (it.changelog) { %>
+<section begin="changelog" />
+<%~ it.changelog %>
+<section end="changelog" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Upgrades]]
+[[Category:<%= it.rarity %> Upgrades]]
+[[Category:<%= it.effectTypeRaw %> Upgrades]]
+<% if (it.upgradeTypeRaw !== 'Normal') { -%>
+[[Category:<%= it.upgradeTypeRaw %> Upgrades]]
+<% } -%>
+<% it.applicableCategories.forEach(cat => { -%>
+[[Category:<%= cat %> Upgrades]]
+<% }) -%>
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated upgrade source pages]]

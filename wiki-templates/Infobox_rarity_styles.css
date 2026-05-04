@@ -1,0 +1,32 @@
+/* Rarity-tier chip — reuses the global .rarity-* classes from
+ * Upgrade_Infobox/styles.css so it matches wherever else rarity is shown. */
+
+.pi-theme-rarity-infobox .pi-title,
+.pi-infobox.pi-theme-rarity-infobox .pi-title {
+	padding: 14px 10px 10px;
+	line-height: 1.3;
+}
+
+.pi-theme-rarity-infobox .pi-image,
+.pi-infobox.pi-theme-rarity-infobox .pi-image {
+	padding: 14px 10px;
+	text-align: center !important;
+}
+
+.pi-theme-rarity-infobox .pi-image[data-source='icon'] img,
+.pi-infobox.pi-theme-rarity-infobox .pi-image[data-source='icon'] img {
+	max-width: 100% !important;
+	width: auto !important;
+	height: auto !important;
+	max-height: 200px !important;
+	object-fit: contain;
+}
+
+.infobox[data-theme='rarity-infobox'] .pi-image[data-source='icon'] img,
+.portable-infobox.pi-theme-rarity-infobox .pi-image[data-source='icon'] img {
+	max-width: 100% !important;
+	width: auto !important;
+	height: auto !important;
+	max-height: 200px !important;
+	object-fit: contain;
+}

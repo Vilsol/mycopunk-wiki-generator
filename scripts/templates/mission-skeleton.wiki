@@ -1,0 +1,29 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+<% if (it.hasDescription) { %>
+{{#lst:<%= it.pageTitle %>/source|description}}
+<% } else { -%>
+''To be written.''
+<% } -%>
+<% if (it.hasBriefing) { %>
+== Briefing ==
+{{#lst:<%= it.pageTitle %>/source|briefing}}
+<% } -%>
+<% if (it.hasVoicelines) { %>
+== Voicelines ==
+{{#lst:<%= it.pageTitle %>/source|voicelines}}
+<% } -%>
+<% if (it.hasStages) { %>
+== Stages ==
+{{#lst:<%= it.pageTitle %>/source|stages}}
+<% } -%>
+<% if (it.hasRewards) { %>
+== Rewards ==
+{{#lst:<%= it.pageTitle %>/source|rewards}}
+<% } -%>
+<% if (it.hasRelated) { %>
+== Related ==
+{{#lst:<%= it.pageTitle %>/source|related}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

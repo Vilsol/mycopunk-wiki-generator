@@ -1,0 +1,65 @@
+<onlyinclude><templatestyles src="Infobox_enemy/styles.css" /><infobox theme="enemy-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''{{#if: {{{enemy_type|}}} | <br/><span class="enemy-type-{{{enemy_type}}}" style="font-size: 0.7em; font-weight: normal;">{{{enemy_type}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="tags">
+            <label>Tags</label>
+            <format>{{{tags}}}</format>
+        </data>
+        <data source="can_be_despawned">
+            <label>Despawnable</label>
+            <format>{{{can_be_despawned}}}</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+            <data source="internal_name">
+                <label>Internal Name</label>
+                <format><code>{{{internal_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays an enemy (hostile NPC) in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox enemy
+|name = Display name (e.g. "Slicer")
+|api_name = Internal APIName (e.g. "Slicer")
+|internal_name = Internal class name (optional)
+|enemy_type = Grunt | Brute | Abomination | Boss
+|tags = Comma-separated behavior tags (e.g. "Gunner, Tall, Turret")
+|can_be_despawned = Yes | No
+|icon = Icon filename (optional — enemies have no dump icon yet)
+}}
+</pre>
+
+==Example Usage==
+<pre>
+{{Infobox enemy
+|name = Slicer
+|api_name = Slicer
+|enemy_type = Abomination
+|tags = Gunner
+|can_be_despawned = Yes
+}}
+</pre>
+===Result===
+{{Infobox enemy
+|name = Slicer
+|api_name = Slicer
+|enemy_type = Abomination
+|tags = Gunner
+|can_be_despawned = Yes
+}}
+
+[[Category:Templates]]

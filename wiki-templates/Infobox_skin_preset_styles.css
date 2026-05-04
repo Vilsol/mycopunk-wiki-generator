@@ -1,0 +1,10 @@
+.pi-theme-skin-preset-infobox .pi-title,
+.pi-infobox.pi-theme-skin-preset-infobox .pi-title {
+	padding: 14px 10px 10px;
+	line-height: 1.3;
+}
+
+.pi-theme-skin-preset-infobox .pi-data-label,
+.pi-infobox.pi-theme-skin-preset-infobox .pi-data-label {
+	min-width: 110px;
+}

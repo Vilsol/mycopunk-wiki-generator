@@ -1,0 +1,62 @@
+<onlyinclude><templatestyles src="Infobox_skin/styles.css" /><infobox theme="skin-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''{{#if: {{{rarity|}}} | <br/><span class="rarity-{{{rarity}}}" style="font-size: 0.7em; font-weight: normal;">{{{rarity}}}</span>}}</format>
+    </title>
+    <panel>
+        <data source="parents">
+            <label>Applies to</label>
+            <format>{{{parents}}}</format>
+        </data>
+        <data source="is_universal">
+            <label>Universal</label>
+            <format>{{{is_universal}}}</format>
+        </data>
+        <data source="variant_count">
+            <label>Variants</label>
+            <format>{{{variant_count}}}</format>
+        </data>
+        <data source="flags">
+            <label>Flags</label>
+            <format>{{{flags}}}</format>
+        </data>
+        <data source="base_skin">
+            <label>Base Skin</label>
+            <format><code>{{{base_skin}}}</code></format>
+        </data>
+        <data source="color">
+            <label>Color</label>
+            <format><span style="display:inline-block;width:14px;height:14px;background:{{{color}}};border:1px solid #444;vertical-align:middle;"></span> <code>{{{color}}}</code></format>
+        </data>{{#if: {{{api_name|}}}{{{dump_id|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+            <data source="dump_id">
+                <label>Dump ID</label>
+                <format><code>{{{dump_id}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a skin (cosmetic upgrade) in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox skin
+|name = Display name (e.g. "Factory")
+|api_name = Internal upgrade APIName
+|dump_id = Stable upgrade ID
+|parents = Wikilinks to parent gear/character (e.g. [[Scrapper]])
+|rarity = Standard | Rare | Epic | Exotic | Contraband | Oddity
+|color = Optional theme color (hex)
+|base_skin = Optional parent-skin upgrade key inherited from
+|flags = Comma-separated capability flags (VFX, Crab, Custom Model, …)
+|variant_count = Total render variants (gear × preset)
+|is_universal = Yes | No
+}}
+</pre>
+
+[[Category:Templates]]

@@ -1,0 +1,14 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+
+{{#lst:<%= it.pageTitle %>/source|description}}
+<% if (it.hasUsedByUpgrades) { %>
+== Used by Upgrades ==
+{{#lst:<%= it.pageTitle %>/source|used_by_upgrades}}
+<% } -%>
+<% if (it.hasUsedByGears) { %>
+== Used by Gears ==
+{{#lst:<%= it.pageTitle %>/source|used_by_gears}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

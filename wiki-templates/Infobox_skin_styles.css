@@ -1,0 +1,12 @@
+/* Reuses the rarity-* chip classes defined globally by Upgrade_Infobox/styles.css. */
+
+.pi-theme-skin-infobox .pi-title,
+.pi-infobox.pi-theme-skin-infobox .pi-title {
+	padding: 14px 10px 10px;
+	line-height: 1.3;
+}
+
+.pi-theme-skin-infobox .pi-data-label,
+.pi-infobox.pi-theme-skin-infobox .pi-data-label {
+	min-width: 110px;
+}

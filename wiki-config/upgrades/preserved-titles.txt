@@ -1,0 +1,29 @@
+# Pages classified as legacy-edited that contain genuine curator content
+# and must NOT be overwritten by the bot's skeleton. Each entry needs
+# manual triage: port the curator additions into a Pattern-A skeleton on
+# the wiki, then remove the title from this list.
+#
+# Generated 2026-04-30 from upload-report.json + Group A audit.
+
+# === Synergies sections (curator-curated cross-references) ===
+Cyclotron Upgrade
+Violent Ignition Upgrade
+Momentum Overload Upgrade
+Fire In My Heart Upgrade
+Double Barrel Upgrade
+Infinity Burn Upgrade
+Elemental Discharge Upgrade
+Superheat Reaction Upgrade
+Dump Charge Upgrade
+Corrode Siphon Upgrade
+Shock Recursion Upgrade
+Immolator Upgrade
+
+# === Synergies + Mechanics ===
+Toxin Recycling Upgrade
+
+# === Specific lore in ==How To Get== ===
+Livelier Upgrade
+Optical Attraction Upgrade
+Eyes Up Here Upgrade
+In For A Penny, In For A Pound Upgrade

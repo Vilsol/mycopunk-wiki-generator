@@ -1,0 +1,86 @@
+/* Threat-tier chip styling — colors mirror the in-game tier hues. */
+.threat-tier-1 {
+	color: #000000;
+	background-color: #3bff6d;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-weight: bold;
+}
+
+.threat-tier-2 {
+	color: #000000;
+	background-color: #f4ff75;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-weight: bold;
+}
+
+.threat-tier-3 {
+	color: #000000;
+	background-color: #ffa31f;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-weight: bold;
+}
+
+.threat-tier-4 {
+	color: #000000;
+	background-color: #ff7f3b;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-weight: bold;
+}
+
+.threat-tier-5 {
+	color: #ffffff;
+	background-color: #ff5919;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-weight: bold;
+}
+
+.threat-tier-6 {
+	color: #ffffff;
+	background-color: #ff1700;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-weight: bold;
+}
+
+.threat-tier-7 {
+	color: #ffffff;
+	background-color: #ff008b;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-weight: bold;
+}
+
+.pi-theme-threat-infobox .pi-title,
+.pi-infobox.pi-theme-threat-infobox .pi-title {
+	padding: 14px 10px 10px;
+	line-height: 1.3;
+}
+
+.pi-theme-threat-infobox .pi-image,
+.pi-infobox.pi-theme-threat-infobox .pi-image {
+	padding: 14px 10px;
+	text-align: center !important;
+}
+
+.pi-theme-threat-infobox .pi-image[data-source='icon'] img,
+.pi-infobox.pi-theme-threat-infobox .pi-image[data-source='icon'] img {
+	max-width: 100% !important;
+	width: auto !important;
+	height: auto !important;
+	max-height: 200px !important;
+	object-fit: contain;
+}
+
+.infobox[data-theme='threat-infobox'] .pi-image[data-source='icon'] img,
+.portable-infobox.pi-theme-threat-infobox .pi-image[data-source='icon'] img {
+	max-width: 100% !important;
+	width: auto !important;
+	height: auto !important;
+	max-height: 200px !important;
+	object-fit: contain;
+}

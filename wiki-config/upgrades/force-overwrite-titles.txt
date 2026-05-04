@@ -1,0 +1,78 @@
+# Pages that the classifier flags as "legacy-edited" but in fact contain
+# only stale/typo'd preamble text from older game patches — no real
+# curator additions. Listed here so --force-titles overrides classification
+# and pushes the current bot skeleton.
+Overload Contingency Upgrade
+Heavy Pockets Upgrade
+Heaven's Fury Upgrade
+Shell Packer Upgrade
+Lagrange Halo Upgrade
+Big Deflector Upgrade
+Combustive Rounds Upgrade
+The Glob Upgrade
+Nice Catch Upgrade
+Chemical Symbiosis Upgrade
+Pressure Cooker Upgrade
+Laying Cable Upgrade
+Deflector Upgrade
+All Powdered Up Upgrade
+Equipment Siphon Upgrade
+Voltaic Battery Upgrade
+Firmly Planted Upgrade
+Coronal Ejection Upgrade
+Ralph's Conundrum Upgrade
+Auger Subroutine Upgrade
+# Group A audit — added by audit subagent on 2026-04-30
+Gambler's Bargain Upgrade
+Gravity Well Upgrade
+Hometown Hero Upgrade
+One-Two Punch Upgrade
+In For A Pound Upgrade
+Efficient Storage Upgrade
+Upside Down Upgrade
+Live Wire Upgrade
+Interim Manager Upgrade
+Synthetic Adrenaline Upgrade
+Maniac Maneuver Upgrade
+Hard-Light Prison Upgrade
+Thermal Vent Override Upgrade
+Connected Systems Upgrade
+Frantic Mechanism Upgrade
+Attrition Supply Upgrade
+Handheld Pocket Universe Upgrade
+Two's Company Upgrade
+Quickfire Upgrade
+Edge Fault Upgrade
+Overclock Upgrade
+Molecular Inversion Upgrade
+Magboots Upgrade
+Frantic Greed Upgrade
+Boundary Incursion Upgrade
+Cosmic Microwave Upgrade
+Multiversal Thievery Upgrade
+Illegal Pocket Grenade Upgrade
+Grenade Belt Upgrade
+Flash Storm Upgrade
+Vending Machine Upgrade
+Hearth & Home Upgrade
+Bullet Time Upgrade
+Hard-Light Coating Upgrade
+Internal Combustion Upgrade
+Linked List Upgrade
+Ideal Conditions Upgrade
+Heavy Support Upgrade
+Harmonizer Upgrade
+Glub Glub Upgrade
+Switcheroo Upgrade
+M.I.R.V. Upgrade
+Modular Construction Upgrade
+Greased Mixture Upgrade
+Cluster Bomb Upgrade
+
+# Manually cleared by user on 2026-04-30 after wiki review
+Saxonite Shackles Upgrade
+Explosive Personality Upgrade
+Compressed Plate Storage Upgrade
+Nutrition Sampler Upgrade
+Ghosting Upgrade
+Pocket Replication Upgrade

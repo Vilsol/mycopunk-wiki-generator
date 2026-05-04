@@ -1,0 +1,27 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox collectable
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.count) { -%>
+|count=<%= it.count %>
+<% } -%>
+<% if (it.hasPunchText) { -%>
+|punch_text=<%~ it.punchText %>
+<% } -%>
+}}<section end="infobox" />
+<% if (it.hasRewardsSection) { %>
+<section begin="rewards" />
+<%~ it.rewardsSection -%>
+<section end="rewards" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Collectables]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated collectable source pages]]

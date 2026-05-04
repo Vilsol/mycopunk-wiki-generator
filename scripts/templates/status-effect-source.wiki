@@ -1,0 +1,39 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox status effect
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.colorHex) { -%>
+|color=<%~ it.colorHex %>
+<% } -%>
+<% if (it.verbName) { -%>
+|verb=<%~ it.verbName %>
+<% } -%>
+<% if (it.pastVerbName) { -%>
+|past_verb=<%~ it.pastVerbName %>
+<% } -%>
+|stops_regen=<%~ it.stopsRegen %>
+<% if (it.numStages) { -%>
+|stages=<%= it.numStages %>
+<% } -%>
+<% if (it.minStage) { -%>
+|min_stage=<%= it.minStage %>
+<% } -%>
+}}<section end="infobox" />
+<% if (it.tuningSection) { %>
+<section begin="tuning" />
+<%~ it.tuningSection -%>
+<section end="tuning" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Status Effects]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated status-effect source pages]]

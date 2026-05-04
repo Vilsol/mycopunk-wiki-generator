@@ -1,0 +1,9 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+
+''To be written.''
+
+== Costs ==
+{{#lst:<%= it.pageTitle %>/source|costs}}
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

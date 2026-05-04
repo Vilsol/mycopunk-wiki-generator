@@ -1,0 +1,59 @@
+<% if (it.seoDescription) { -%>
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> icon
+|twitter_card=summary
+}}<section end="seo" />
+<% } -%>
+<section begin="infobox" />{{Infobox gear
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|gear_type=<%~ it.gearType %>
+<% if (it.typeName) { -%>
+|type_name=<%~ it.typeName %>
+<% } -%>
+|icon=<%~ it.icon %>
+<% if (it.gridSize) { -%>
+|grid_size=<%~ it.gridSize %>
+<% } -%>
+<% if (it.skinCount) { -%>
+|skin_count=<%= it.skinCount %>
+<% } -%>
+<% if (it.minUnlockLevel) { -%>
+|min_unlock_level=<%= it.minUnlockLevel %>
+<% } -%>
+<% if (it.maxLevel) { -%>
+|max_level=<%= it.maxLevel %>
+<% } -%>
+}}<section end="infobox" />
+
+<section begin="description" /><%~ it.descriptionText %><section end="description" />
+<% if (it.statsSection) { %>
+<section begin="stats" />
+<%~ it.statsSection -%>
+<section end="stats" />
+<% } -%>
+<% if (it.unlocksSection) { %>
+<section begin="unlocks" />
+<%~ it.unlocksSection -%>
+<section end="unlocks" />
+<% } -%>
+<% if (it.upgradesSection) { %>
+<section begin="upgrades" />
+<%~ it.upgradesSection -%>
+<section end="upgrades" />
+<% } -%>
+<% if (it.skinsSection) { %>
+<section begin="skins" />
+<%~ it.skinsSection -%>
+<section end="skins" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Gears]]
+[[Category:<%= it.categoryName %>]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated gear source pages]]

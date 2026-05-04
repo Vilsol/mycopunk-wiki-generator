@@ -1,0 +1,45 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> mission modifier icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox mission modifier
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+|can_be_chosen=<%~ it.canBeChosen %>
+}}<section end="infobox" />
+<% if (it.descriptionText) { %>
+<section begin="description" /><%~ it.descriptionText %><section end="description" />
+<% } -%>
+<% if (it.hasProperties) { %>
+<section begin="properties" />
+<%~ it.propertiesSection -%>
+<section end="properties" />
+<% } -%>
+<% if (it.hasTierWeights) { %>
+<section begin="tier_weights" />
+<%~ it.tierWeightsSection -%>
+<section end="tier_weights" />
+<% } -%>
+<% if (it.hasVariants) { %>
+<section begin="variants" />
+<%~ it.variantsSection -%>
+<section end="variants" />
+<% } -%>
+<% if (it.hasRewards) { %>
+<section begin="rewards" />
+<%~ it.rewardsSection -%>
+<section end="rewards" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Mission Modifiers]]
+<% if (!it.canBeChosenRaw) { -%>
+[[Category:Hidden Mission Modifiers]]
+<% } -%>
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated mission modifier source pages]]

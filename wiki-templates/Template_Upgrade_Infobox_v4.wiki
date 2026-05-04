@@ -1,0 +1,132 @@
+<onlyinclude><templatestyles src="Upgrade_Infobox/styles.css" /><infobox theme="upgrade-infobox">
+    <title source="Name">
+        <format><center>'''{{{Name}}}'''{{#if: {{{Rarity|}}} | <br/><span class="rarity-{{{Rarity}}}" style="font-size: 0.7em; font-weight: normal;">{{{Rarity}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{Name}}}]]</format>
+    </image>
+    <panel>
+        <data source="ApplicableTo">
+            <label>Applicable To</label>
+            <format>{{{ApplicableTo}}}</format>
+        </data>
+        <data source="EffectType">
+            <label>Effect Type</label>
+            <format>{{{EffectType}}}</format>
+        </data>
+        <data source="UpgradeType">
+            <label>Upgrade Type</label>
+            <format>{{{UpgradeType}}}</format>
+        </data>{{#if: {{{pattern|}}} |
+        <section>
+            <header>Pattern</header>
+            <data source="pattern">
+                <format>[[File:{{{pattern}}}|frameless|x400px|center|alt=Upgrade pattern for {{{Name}}}]]</format>
+            </data>
+        </section>}}
+        <section>
+            <header>{{#if: {{{UnlockCost1_Resource|}}}{{{UnlockCost2_Resource|}}}{{{UnlockCost3_Resource|}}}{{{UnlockCost4_Resource|}}}{{{UnlockCost5_Resource|}}} | Unlock Cost }}</header>
+            <data source="UnlockCost1_Resource">
+                <label>{{{UnlockCost1_Resource|}}}</label>
+                <format>{{{UnlockCost1_Count|}}}</format>
+            </data>
+            <data source="UnlockCost2_Resource">
+                <label>{{{UnlockCost2_Resource|}}}</label>
+                <format>{{{UnlockCost2_Count|}}}</format>
+            </data>
+            <data source="UnlockCost3_Resource">
+                <label>{{{UnlockCost3_Resource|}}}</label>
+                <format>{{{UnlockCost3_Count|}}}</format>
+            </data>
+            <data source="UnlockCost4_Resource">
+                <label>{{{UnlockCost4_Resource|}}}</label>
+                <format>{{{UnlockCost4_Count|}}}</format>
+            </data>
+            <data source="UnlockCost5_Resource">
+                <label>{{{UnlockCost5_Resource|}}}</label>
+                <format>{{{UnlockCost5_Count|}}}</format>
+            </data>
+        </section>{{#if: {{{APIName|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="APIName">
+                <label>API Name</label>
+                <format><code>{{{APIName}}}</code></format>
+            </data>{{#if: {{{Flags|}}} |
+            <data source="Flags">
+                <label>Flags</label>
+                <format>{{{Flags}}}</format>
+            </data>}}
+        </section>}}
+    </panel>
+</infobox></onlyinclude> 
+==Documentation==
+This template is to display upgrades.
+
+==How to Use==
+<pre>
+{{Upgrade Infobox
+|Name = Name of the upgrade
+|Rarity = Rarity of the upgrade
+|EffectType = Effect type (Normal, Fire, etc.)
+|UpgradeType = Upgrade type (Normal, Cosmetic, etc.)
+|icon = Icon image
+|pattern = Pattern image
+|UnlockCostX_Resource = Resource name
+|UnlockCostX_Count = Resource count
+|ID = ID of the upgrade
+|APIName = API name of the upgrade
+|Flags = Flags of the upgrade
+|ApplicableTo = Applicable to (e.g. "Fast Shotgun, Fast Reload Shotgun")
+}}
+</pre>
+
+==Example Usage==
+
+<pre>
+{{Upgrade Infobox
+|Name = Extralight Frame
+|Rarity = Epic
+|EffectType = Normal
+|UpgradeType = Normal
+|Description = Fire while sprinting.
+|icon = Extralight_Frame_icon.png
+|pattern = Extralight_Frame_pattern.svg
+|UnlockCost1_Resource = Gats
+|UnlockCost1_Count = 130
+|UnlockCost2_Resource = Romphus
+|UnlockCost2_Count = 20
+|UnlockCost3_Resource = Gussula
+|UnlockCost3_Count = 3
+|UnlockCost4_Resource = Beezia
+|UnlockCost4_Count = 14
+|ID = 40986
+|APIName = Extralight Frame
+|Flags = NoRandom
+|ApplicableTo = SMG
+}}
+</pre>
+===Result===
+{{Upgrade Infobox
+|Name = Extralight Frame
+|Rarity = Epic
+|EffectType = Normal
+|UpgradeType = Normal
+|Description = Fire while sprinting.
+|icon = Extralight_Frame_icon.png
+|pattern = Extralight_Frame_pattern.svg
+|UnlockCost1_Resource = Gats
+|UnlockCost1_Count = 130
+|UnlockCost2_Resource = Romphus
+|UnlockCost2_Count = 20
+|UnlockCost3_Resource = Gussula
+|UnlockCost3_Count = 3
+|UnlockCost4_Resource = Beezia
+|UnlockCost4_Count = 14
+|ID = 40986
+|APIName = Extralight Frame
+|Flags = NoRandom
+|ApplicableTo = SMG
+}}
+
+[[Category:Templates]]

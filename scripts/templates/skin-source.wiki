@@ -1,0 +1,60 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox skin
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|dump_id=<%~ it.dumpId %>
+<% if (it.parentLinks) { -%>
+|parents=<%~ it.parentLinks %>
+<% } -%>
+<% if (it.rarity) { -%>
+|rarity=<%~ it.rarity %>
+<% } -%>
+<% if (it.colorHex) { -%>
+|color=<%~ it.colorHex %>
+<% } -%>
+<% if (it.baseSkin) { -%>
+|base_skin=<%~ it.baseSkin %>
+<% } -%>
+<% if (it.flags) { -%>
+|flags=<%~ it.flags %>
+<% } -%>
+<% if (it.variantCount) { -%>
+|variant_count=<%= it.variantCount %>
+<% } -%>
+|is_universal=<%= it.isUniversal ? 'Yes' : 'No' %>
+}}<section end="infobox" />
+
+<% if (it.descriptionText) { -%>
+<section begin="description" /><%~ it.descriptionText %><section end="description" />
+<% } -%>
+<% if (it.hasModifiers) { %>
+<section begin="modifiers" />
+<%~ it.modifiersSection -%>
+<section end="modifiers" />
+<% } -%>
+<% if (it.hasVariants) { %>
+<section begin="variants" />
+<%~ it.variantsSection -%>
+<section end="variants" />
+<% } -%>
+<% if (it.hasNameModifiers) { %>
+<section begin="name_modifiers" />
+<%~ it.nameModifiersSection -%>
+<section end="name_modifiers" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Skins]]
+<% if (it.rarity) { -%>
+[[Category:<%= it.rarity %> Skins]]
+<% } -%>
+<% if (it.isUniversal) { -%>
+[[Category:Universal Skins]]
+<% } -%>
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated skin source pages]]

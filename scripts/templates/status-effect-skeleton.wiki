@@ -1,0 +1,8 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+<% if (it.tuningSection) { %>
+== Tuning ==
+{{#lst:<%= it.pageTitle %>/source|tuning}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

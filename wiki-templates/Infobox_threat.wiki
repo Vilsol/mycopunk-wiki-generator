@@ -1,0 +1,41 @@
+<onlyinclude><templatestyles src="Infobox_threat/styles.css" /><infobox theme="threat-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''{{#if: {{{number_label|}}} | <br/><span class="threat-tier-{{{tier}}}" style="font-size: 0.7em; font-weight: normal;">{{{number_label}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="tier">
+            <label>Tier</label>
+            <format>{{{tier}}}</format>
+        </data>
+        <data source="color">
+            <label>Color</label>
+            <format><span style="display:inline-block;width:14px;height:14px;background:{{{color}}};border:1px solid #444;vertical-align:middle;"></span> <code>{{{color}}}</code></format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a mission threat tier in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox threat
+|name = Display name (e.g. "Deadly")
+|api_name = Internal ID (e.g. "threat5")
+|number_label = "Threat Level N"
+|tier = Numeric tier (1–7)
+|icon = Icon filename
+|color = Hex color (e.g. "#FF5919")
+}}
+</pre>
+
+[[Category:Templates]]

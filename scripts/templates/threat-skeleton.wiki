@@ -1,0 +1,10 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+
+''To be written.''
+<% if (it.hasRewardsSection) { %>
+== Mission Rewards ==
+{{#lst:<%= it.pageTitle %>/source|rewards}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

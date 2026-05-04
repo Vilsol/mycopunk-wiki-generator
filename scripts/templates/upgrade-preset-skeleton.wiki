@@ -1,0 +1,12 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+<% if (it.hasModifiers) { %>
+== Modifiers ==
+{{#lst:<%= it.pageTitle %>/source|modifiers}}
+<% } -%>
+<% if (it.hasUsedBy) { %>
+== Used By ==
+{{#lst:<%= it.pageTitle %>/source|used_by}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

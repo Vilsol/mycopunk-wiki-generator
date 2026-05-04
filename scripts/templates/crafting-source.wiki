@@ -1,0 +1,19 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox crafting
+|name=<%~ it.name %>
+|min_level=<%= it.minLevel %>
+}}<section end="infobox" />
+
+<section begin="costs" />
+<%~ it.costsSection -%>
+<section end="costs" />
+
+<includeonly><section begin="categories" />
+[[Category:Crafting]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated crafting source pages]]

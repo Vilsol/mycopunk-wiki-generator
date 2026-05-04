@@ -1,0 +1,70 @@
+<onlyinclude><templatestyles src="Infobox_mission/styles.css" /><infobox theme="mission-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''{{#if: {{{type_name|}}} | <br/><span style="font-size: 0.7em; font-weight: normal; opacity: 0.85;">{{{type_name}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="mission_type">
+            <label>Type</label>
+            <format><code>{{{mission_type}}}</code></format>
+        </data>
+        <data source="min_level">
+            <label>Min Level</label>
+            <format>{{{min_level}}}</format>
+        </data>
+        <data source="min_intensity">
+            <label>Min Intensity</label>
+            <format>{{{min_intensity}}}</format>
+        </data>
+        <data source="extract_at_end">
+            <label>Extract</label>
+            <format>{{{extract_at_end}}}</format>
+        </data>
+        <data source="selectable">
+            <label>Selectable</label>
+            <format>{{{selectable}}}</format>
+        </data>
+        <data source="boss">
+            <label>Boss</label>
+            <format>[[{{{boss}}}]]</format>
+        </data>
+        <data source="flags">
+            <label>Flags</label>
+            <format>{{{flags}}}</format>
+        </data>
+        <data source="color">
+            <label>Color</label>
+            <format><span style="display:inline-block;width:14px;height:14px;background:{{{color}}};border:1px solid #444;vertical-align:middle;"></span> <code>{{{color}}}</code></format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a mission in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox mission
+|name = Display name (e.g. "Cleanup Detail")
+|api_name = Internal MissionName (e.g. "cleanup_detail")
+|icon = Icon filename
+|mission_type = MissionType enum (e.g. "CleanupDetail")
+|type_name = TypeName label (e.g. "Property Reclamation")
+|color = Hex color (e.g. "#FF00A4")
+|min_level = Minimum player level
+|min_intensity = Minimum intensity tier
+|extract_at_end = Yes | No
+|selectable = Yes | No
+|flags = Comma-separated flag labels
+}}
+</pre>
+
+[[Category:Templates]]

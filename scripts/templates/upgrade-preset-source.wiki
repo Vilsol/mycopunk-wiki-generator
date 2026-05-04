@@ -1,0 +1,38 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox skin preset
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+<% if (it.nameModifier) { -%>
+|name_modifier=<%~ it.nameModifier %>
+<% } -%>
+<% if (it.nameModifierColor) { -%>
+|name_modifier_color=<%~ it.nameModifierColor %>
+<% } -%>
+|show_name_in_stats=<%~ it.showNameInStats %>
+<% if (it.modifierCount) { -%>
+|modifier_count=<%= it.modifierCount %>
+<% } -%>
+<% if (it.usedByCount) { -%>
+|used_by_count=<%= it.usedByCount %>
+<% } -%>
+}}<section end="infobox" />
+<% if (it.hasModifiers) { %>
+<section begin="modifiers" />
+<%~ it.modifiersSection -%>
+<section end="modifiers" />
+<% } -%>
+<% if (it.hasUsedBy) { %>
+<section begin="used_by" />
+<%~ it.usedBySection -%>
+<section end="used_by" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Skin Presets]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated skin preset source pages]]

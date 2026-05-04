@@ -1,0 +1,46 @@
+<onlyinclude><templatestyles src="Infobox_rarity/styles.css" /><infobox theme="rarity-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''<br/><span class="rarity-{{{name}}}" style="font-size: 0.7em; font-weight: normal;">Rarity Tier</span></format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}} rarity]]</format>
+    </image>
+    <panel>
+        <data source="upgrade_count">
+            <label>Upgrades</label>
+            <format>{{{upgrade_count}}}</format>
+        </data>
+        <data source="scrap_resource">
+            <label>Scrap Resource</label>
+            <format><code>{{{scrap_resource}}}</code></format>
+        </data>
+        <data source="color">
+            <label>Color</label>
+            <format><span style="display:inline-block;width:14px;height:14px;background:{{{color}}};border:1px solid #444;vertical-align:middle;"></span> <code>{{{color}}}</code></format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a rarity tier in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox rarity
+|name = Display name (e.g. "Exotic")
+|api_name = Lowercase key (e.g. "exotic")
+|icon = Icon filename
+|color = Hex color (e.g. "#FFAD3B")
+|background = Hex background color
+|scrap_resource = Scrap resource ID (e.g. "scrap_exotic")
+|upgrade_count = Number of upgrades at this tier
+}}
+</pre>
+
+[[Category:Templates]]

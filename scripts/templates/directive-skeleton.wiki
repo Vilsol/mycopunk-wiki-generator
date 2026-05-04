@@ -1,0 +1,25 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+<% if (it.descriptionText) { %>
+{{#lst:<%= it.pageTitle %>/source|description}}
+<% } else { -%>
+''To be written.''
+<% } -%>
+<% if (it.hasProperties) { %>
+== Effects ==
+{{#lst:<%= it.pageTitle %>/source|properties}}
+<% } -%>
+<% if (it.hasTierWeights) { %>
+== Tier Weights ==
+{{#lst:<%= it.pageTitle %>/source|tier_weights}}
+<% } -%>
+<% if (it.hasVariants) { %>
+== Variants ==
+{{#lst:<%= it.pageTitle %>/source|variants}}
+<% } -%>
+<% if (it.hasRewards) { %>
+== Rewards ==
+{{#lst:<%= it.pageTitle %>/source|rewards}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

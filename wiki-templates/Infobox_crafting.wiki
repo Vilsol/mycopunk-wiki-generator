@@ -1,0 +1,15 @@
+<onlyinclude><templatestyles src="Infobox_crafting/styles.css" /><infobox theme="crafting-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''</format>
+    </title>
+    <panel>
+        <data source="min_level">
+            <label>Min Level</label>
+            <format>{{{min_level}}}</format>
+        </data>
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+Singleton infobox for the Crafting page.
+
+[[Category:Templates]]

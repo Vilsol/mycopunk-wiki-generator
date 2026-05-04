@@ -1,0 +1,35 @@
+<onlyinclude><templatestyles src="Infobox_mission_modifier/styles.css" /><infobox theme="mission-modifier-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''<br/><span style="font-size: 0.7em; font-weight: normal; opacity: 0.8;">Mission Modifier</span></format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="can_be_chosen">
+            <label>Selectable</label>
+            <format>{{{can_be_chosen}}}</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>Internal ID</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+Infobox for mission modifiers (game's internal name: "directives").
+
+==How to Use==
+<pre>
+{{Infobox mission modifier
+|name = Display name (e.g. "Cleanse")
+|api_name = Numeric ID
+|icon = Icon filename
+|can_be_chosen = Yes | No
+}}
+</pre>
+
+[[Category:Templates]]
