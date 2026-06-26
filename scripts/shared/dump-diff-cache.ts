@@ -14,12 +14,41 @@ import { diffDumps } from './dump-diff.ts';
 import { ensureDir } from './paths.ts';
 import type { DataDump } from './upgrades/types.ts';
 
+// Bump whenever the `Change` shape emitted by `diffDumps` changes, so
+// caches written by an older format are treated as stale and recomputed
+// instead of being replayed (which would feed malformed records to the
+// renderer). v2: `rolls` carries fromMin/fromMax/toMin/toMax (was
+// added/removed).
+export const CHANGE_FORMAT_VERSION = 2;
+
 interface CachedDiff {
+	formatVersion: number;
 	prevVersion: string;
 	currVersion: string;
 	prevMtimeMs: number;
 	currMtimeMs: number;
 	entries: [string, Change[]][];
+}
+
+// Pure freshness check: a cache is reusable only when its format version,
+// version pair, and both dump mtimes all match what we expect.
+export function isCachedDiffFresh(
+	cached: Partial<CachedDiff> | null | undefined,
+	expected: {
+		prevVersion: string;
+		currVersion: string;
+		prevMtimeMs: number;
+		currMtimeMs: number;
+	}
+): boolean {
+	if (!cached) return false;
+	return (
+		cached.formatVersion === CHANGE_FORMAT_VERSION &&
+		cached.prevVersion === expected.prevVersion &&
+		cached.currVersion === expected.currVersion &&
+		cached.prevMtimeMs === expected.prevMtimeMs &&
+		cached.currMtimeMs === expected.currMtimeMs
+	);
 }
 
 export function cachedDiff(
@@ -46,12 +75,7 @@ export function cachedDiff(
 	if (fs.existsSync(cachePath)) {
 		try {
 			const cached = JSON.parse(fs.readFileSync(cachePath, 'utf8')) as CachedDiff;
-			if (
-				cached.prevVersion === prevVersion &&
-				cached.currVersion === currVersion &&
-				cached.prevMtimeMs === prevMtimeMs &&
-				cached.currMtimeMs === currMtimeMs
-			) {
+			if (isCachedDiffFresh(cached, { prevVersion, currVersion, prevMtimeMs, currMtimeMs })) {
 				return new Map(cached.entries);
 			}
 		} catch {
@@ -61,6 +85,7 @@ export function cachedDiff(
 
 	const result = diffDumps(loadDump(prevVersion) as never, loadDump(currVersion) as never);
 	const payload: CachedDiff = {
+		formatVersion: CHANGE_FORMAT_VERSION,
 		prevVersion,
 		currVersion,
 		prevMtimeMs,
