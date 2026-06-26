@@ -332,6 +332,29 @@ export function buildRelatedPagesTemplate(): string {
 // Changelog history
 // ─────────────────────────────────────────────────────────────────────────
 
+// Every upgrade present in the oldest tracked dump gets an `Added.` record
+// at that version, prepended to its history — even when it has later
+// changes. Lists here are oldest-first (pre-reverse), so the baseline is
+// unshifted to the front. Mutates `history` in place.
+export function prependBaselineRecords(
+	history: Map<string, ChangeRecord[]>,
+	currentUpgradeIDs: Iterable<string>,
+	oldestUpgradeIDs: Set<string>,
+	oldestEntry: { version: string; dumpedAt: string }
+): void {
+	for (const id of currentUpgradeIDs) {
+		if (!oldestUpgradeIDs.has(id)) continue;
+		const baseline: ChangeRecord = {
+			version: oldestEntry.version,
+			dumpedAt: oldestEntry.dumpedAt,
+			changes: [{ kind: 'added' }]
+		};
+		const list = history.get(id);
+		if (!list) history.set(id, [baseline]);
+		else list.unshift(baseline);
+	}
+}
+
 export async function loadUpgradeChangelogHistory(): Promise<Map<string, ChangeRecord[]>> {
 	const out = new Map<string, ChangeRecord[]>();
 	let manifestVersions: IndexEntry[] = [];
@@ -416,17 +439,7 @@ export async function loadUpgradeChangelogHistory(): Promise<Map<string, ChangeR
 	}
 	if (oldestDump) {
 		const oldestIDs = new Set(Object.keys(oldestDump.upgrades ?? {}));
-		for (const id of Object.keys(currentDump.upgrades ?? {})) {
-			if (out.has(id)) continue;
-			if (!oldestIDs.has(id)) continue;
-			out.set(id, [
-				{
-					version: oldestEntry.version,
-					dumpedAt: oldestEntry.dumpedAt,
-					changes: [{ kind: 'added' }]
-				}
-			]);
-		}
+		prependBaselineRecords(out, Object.keys(currentDump.upgrades ?? {}), oldestIDs, oldestEntry);
 	}
 
 	for (const list of out.values()) list.reverse();
