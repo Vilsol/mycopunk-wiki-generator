@@ -1,0 +1,59 @@
+name: Release wiki
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Dump version (blank = manifest latest)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Preview uploads without writing"
+        type: boolean
+        default: false
+  repository_dispatch:
+    types: [new-data-dump]
+
+concurrency:
+  group: release-wiki
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      MYCOPUNK_BOT_USER: ${{ secrets.MYCOPUNK_BOT_USER }}
+      MYCOPUNK_BOT_PASSWORD: ${{ secrets.MYCOPUNK_BOT_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain (mise → bun + python)
+        uses: jdx/mise-action@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify bot credentials are set
+        run: |
+          if [ -z "$MYCOPUNK_BOT_USER" ] || [ -z "$MYCOPUNK_BOT_PASSWORD" ]; then
+            echo "::error::MYCOPUNK_BOT_USER / MYCOPUNK_BOT_PASSWORD secrets are not set."
+            exit 1
+          fi
+
+      - name: Sync requested version
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.version != '' }}
+        run: bun scripts/sync-data.ts --version="${{ inputs.version }}"
+
+      - name: Generate (data-driven)
+        run: mise run release:ci
+
+      - name: Upload (live)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        run: mise run release:upload-ci
+
+      - name: Upload (dry run)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          bun scripts/upload-wiki.ts --all --dry-run
+          bun scripts/upload-files.ts --all --dry-run
