@@ -48,11 +48,12 @@ function renderCost(c: Extract<Change, { kind: 'cost' }>): string {
 	return lines.join('\n');
 }
 
+function fmtRange(min: string, max: string): string {
+	return min === max ? escapeWiki(min) : `[${escapeWiki(min)} – ${escapeWiki(max)}]`;
+}
+
 function renderRolls(c: Extract<Change, { kind: 'rolls' }>): string {
-	const parts: string[] = [];
-	if (c.added.length) parts.push(`added ${c.added.map((v) => escapeWiki(v)).join(', ')}`);
-	if (c.removed.length) parts.push(`removed ${c.removed.map((v) => escapeWiki(v)).join(', ')}`);
-	return `* '''${escapeWiki(c.stat)}''' possible rolls: ${parts.join('; ')}`;
+	return `* '''${escapeWiki(c.stat)}''' rolls: ${fmtRange(c.fromMin, c.fromMax)} → ${fmtRange(c.toMin, c.toMax)}`;
 }
 
 function renderStatLine(

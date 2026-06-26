@@ -50,8 +50,10 @@ export type Change =
 			kind: 'rolls';
 			property: string;
 			stat: string;
-			added: string[];
-			removed: string[];
+			fromMin: string;
+			fromMax: string;
+			toMin: string;
+			toMax: string;
 	  }
 	| { kind: 'property-add'; property: string }
 	| { kind: 'property-remove'; property: string };

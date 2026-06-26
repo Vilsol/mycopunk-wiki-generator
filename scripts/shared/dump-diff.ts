@@ -33,6 +33,35 @@ function arrToSet<T>(xs: readonly T[] | undefined): Set<T> {
 	return new Set(xs ?? []);
 }
 
+// Parse a formatted roll value ("+1.63%", "-30.52%", "0.78") to a number
+// for ordering. Unparseable tokens sort last so a single bad token never
+// crashes the range computation.
+function parseRollNumber(s: string): number {
+	const n = Number.parseFloat(s.replace(/[^0-9.+-]/g, ''));
+	return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
+// Min/max of a value set, returning the original display strings.
+function rollRange(values: Set<string>): { min: string; max: string } | null {
+	if (values.size === 0) return null;
+	let min = '';
+	let max = '';
+	let minN = Number.POSITIVE_INFINITY;
+	let maxN = Number.NEGATIVE_INFINITY;
+	for (const v of values) {
+		const n = parseRollNumber(v);
+		if (n < minN) {
+			minN = n;
+			min = v;
+		}
+		if (n > maxN) {
+			maxN = n;
+			max = v;
+		}
+	}
+	return { min, max };
+}
+
 // Map a Rarity name to its Ouroboros-redemption cost per the dumper's
 // formula `5 + Rarity*2`. Used to suppress derived OuroborosCost noise
 // when the only thing that changed was rarity.
@@ -380,22 +409,27 @@ function diffOneProperty(propLabel: string, prev: DumpProperty, curr: DumpProper
 		// no entry, since adds are tracked at StatNames level).
 	}
 
-	// Rolled-values set diffs.
+	// Rolled-values range diffs. Show how the obtainable min–max moved;
+	// pure intra-range shuffles (same min and max) are suppressed as noise.
 	const prevRolls = collectRolls(prev);
 	const currRolls = collectRolls(curr);
 	const allRollKeys = new Set([...prevRolls.keys(), ...currRolls.keys()]);
 	for (const key of allRollKeys) {
-		const a = prevRolls.get(key) ?? new Set();
-		const b = currRolls.get(key) ?? new Set();
-		const { added, removed } = setDiff(a, b);
-		if (added.length === 0 && removed.length === 0) continue;
+		const a = rollRange(prevRolls.get(key) ?? new Set());
+		const b = rollRange(currRolls.get(key) ?? new Set());
+		// Appearance/disappearance of a whole stat's rolls is covered by the
+		// StatNames set diff; rolls focuses purely on range movement.
+		if (!a || !b) continue;
+		if (a.min === b.min && a.max === b.max) continue;
 		const [, name] = key.split('\x00');
 		out.push({
 			kind: 'rolls',
 			property: propLabel,
 			stat: name,
-			added,
-			removed
+			fromMin: a.min,
+			fromMax: a.max,
+			toMin: b.min,
+			toMax: b.max
 		});
 	}
 
