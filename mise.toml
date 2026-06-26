@@ -103,3 +103,24 @@ run = "bun scripts/upload-skin-previews.ts"
 [tasks."release:upload"]
 description = "Push everything to the wiki — run after `mise run release`"
 depends = ["release:upload-wiki", "release:upload-files", "release:upload-skin-previews"]
+
+# === CI release (data-driven only — no local-asset steps) ───────────────
+# Excludes release:icons (needs ~/MycopunkExtracted/<version>/Texture2D)
+# and release:skin-previews (needs in-game renders). Used by
+# .github/workflows/release-wiki.yml.
+
+[tasks."release:ci"]
+description = "CI-safe regen: data-driven sources + SVGs (no local-asset steps)"
+depends = [
+  "release:sync",
+  "release:source",
+  "release:patterns",
+  "release:character-skill-trees"
+]
+
+[tasks."release:upload-ci"]
+description = "Upload CI-generated wiki source + SVG assets (skips absent icon dirs)"
+run = '''
+bun scripts/upload-wiki.ts --all
+bun scripts/upload-files.ts --all
+'''
