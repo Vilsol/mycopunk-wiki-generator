@@ -75,3 +75,24 @@ describe('resolveCollisions', () => {
 		expect(overrides.get('enemies\x001')).toBe('X (Enemy)');
 	});
 });
+
+import { finalTitle, titleKey, defaultLabel, ENTITY_HIERARCHY } from './title-resolver.ts';
+
+describe('finalTitle / helpers', () => {
+	test('finalTitle falls back to base when nothing prepared for the key', () => {
+		expect(finalTitle('nonexistent\x00key', 'Some Title')).toBe('Some Title');
+	});
+
+	test('titleKey is entity + null-separated safeFilename', () => {
+		expect(titleKey('gears', 'kart')).toBe('gears\x00kart');
+	});
+
+	test('defaultLabel title-cases and singularizes the entity name', () => {
+		expect(defaultLabel('upgrades')).toBe('Upgrade');
+		expect(defaultLabel('characters')).toBe('Character');
+	});
+
+	test('hierarchy ranks gears above enemies', () => {
+		expect(ENTITY_HIERARCHY.indexOf('gears')).toBeLessThan(ENTITY_HIERARCHY.indexOf('enemies'));
+	});
+});
