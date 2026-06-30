@@ -15,6 +15,7 @@
 import { generateEntityPages } from './shared/entity-pipeline.ts';
 import { entityOutputDir } from './shared/paths.ts';
 import { getEntity, knownEntities } from './shared/entity-registry.ts';
+import { prepareTitleResolution } from './shared/title-resolver.ts';
 
 interface CliOpts {
 	entity?: string;
@@ -79,6 +80,7 @@ async function generateOne(name: string, filterAPIName?: string): Promise<number
 }
 
 async function main() {
+	await prepareTitleResolution();
 	const opts = parseArgs(process.argv.slice(2));
 	if (!opts.entity && !opts.all) {
 		console.error('Pass --entity=<name> or --all. See --help.');

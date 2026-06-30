@@ -15,6 +15,7 @@ import {
 	type EntityUploadConfig
 } from './shared/upload-pipeline.ts';
 import { loadGameVersion } from './shared/dump.ts';
+import { prepareTitleResolution } from './shared/title-resolver.ts';
 
 const RATE_LIMIT_MS = 1000;
 
@@ -208,6 +209,7 @@ async function uploadOne(
 }
 
 async function main() {
+	await prepareTitleResolution();
 	const options = parseArgs(process.argv.slice(2));
 	const gameVersion = loadGameVersion();
 	console.log(`Game version (from data.json): ${gameVersion}`);

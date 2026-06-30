@@ -31,6 +31,7 @@ import {
 } from './shared/upload-pipeline.ts';
 import { loadGameVersion } from './shared/dump.ts';
 import { normalizeContent, pageTitleToUrl } from './shared/wiki-text.ts';
+import { prepareTitleResolution } from './shared/title-resolver.ts';
 
 const RATE_LIMIT_MS = 1000;
 const UPLOAD_CONCURRENCY = 1;
@@ -662,6 +663,7 @@ async function uploadOneEntity(
 }
 
 async function main() {
+	await prepareTitleResolution();
 	const options = parseArgs(process.argv.slice(2));
 	const gameVersion = loadGameVersion();
 	console.log(`Game version: ${gameVersion}`);
