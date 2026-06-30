@@ -283,6 +283,7 @@ export const entity = defineEntity<Enemy>({
 	safeFilename,
 	displayFilename,
 	pageTitle: enemyPageTitle,
+	disambiguationLabel: () => 'Enemy',
 	identLabel: (e) => `${e.APIName ?? e.InternalName} (ID: ${e.ID})`,
 	classifier: {
 		placeholderPhrases: [`''To be written.''`],

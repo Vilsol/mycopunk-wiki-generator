@@ -367,6 +367,7 @@ export const entity = defineEntity<Gear>({
 	safeFilename,
 	displayFilename,
 	pageTitle: gearPageTitle,
+	disambiguationLabel: (gear) => gear.GearType ?? 'Gear',
 	identLabel: (g) => `${g.APIName} (ID: ${g.ID})`,
 	infoboxDescription: (g) => g.Description ?? '',
 	classifier: {

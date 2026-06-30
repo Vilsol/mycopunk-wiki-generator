@@ -100,3 +100,20 @@ describe('finalTitle / helpers', () => {
 		expect(defaultLabel('rarities')).toBe('Rarity');
 	});
 });
+
+import { getEntity } from './entity-registry.ts';
+
+describe('integration: D-19 Dart resolves deterministically', () => {
+	test('gear keeps "D-19 Dart"; enemy becomes "D-19 Dart (Enemy)"', async () => {
+		const { prepareTitleResolution } = await import('./title-resolver.ts');
+		await prepareTitleResolution();
+		const gears = await getEntity('gears');
+		const enemies = await getEntity('enemies');
+		const gearKart = gears.uploadConfig.loadItems().find((g) => gears.basePageTitle(g) === 'D-19 Dart');
+		const enemyKart = enemies.uploadConfig
+			.loadItems()
+			.find((e) => enemies.basePageTitle(e) === 'D-19 Dart');
+		expect(gearKart && gears.uploadConfig.pageTitle(gearKart)).toBe('D-19 Dart');
+		expect(enemyKart && enemies.uploadConfig.pageTitle(enemyKart)).toBe('D-19 Dart (Enemy)');
+	});
+});
