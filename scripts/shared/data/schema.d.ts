@@ -262,6 +262,24 @@ export interface MycopunkDumperDataJson {
   upgradePresets?: {
     [k: string]: UpgradePresetEntry;
   };
+  /**
+   * Player-level milestone chain shown when you click your player level in the inventory screen. Ordered by `Level`. Built by walking `LevelMilestones.FirstMilestone()` (constructed in code, not a ScriptableObject).
+   */
+  levelMilestones?: LevelMilestoneEntry[];
+  patternInfusion?: PatternInfusion;
+  directiveManager?: DirectiveManagerEntry;
+  /**
+   * Per-player-level upgrade-grid size curves. Catalog source: `Resources.FindObjectsOfTypeAll<GridProfile>()`. Keyed by SO asset name (e.g. "DefaultGridProfile", "HeavyGridProfile").
+   */
+  gridProfiles?: {
+    [k: string]: GridProfileEntry;
+  };
+  /**
+   * Planet biome-composition arrays. Catalog source: `Resources.FindObjectsOfTypeAll<Planet>()`. Keyed by SO asset name (e.g. "New Atlas").
+   */
+  planets?: {
+    [k: string]: PlanetEntry;
+  };
 }
 /**
  * A single upgrade definition (a hex-grid module that modifies gear or characters).
@@ -966,7 +984,11 @@ export interface LevelUnlockEntry {
     | "LevelUnlock_Gear"
     | "LevelUnlock_IntroUpgrade"
     | "LevelUnlock_Preview"
-    | "LevelUnlock_RarityReward";
+    | "LevelUnlock_RarityReward"
+    | "LevelUnlock_Antimass"
+    | "LevelUnlock_CorpContest"
+    | "LevelUnlock_Event"
+    | "LevelUnlock_GearLevel";
   /**
    * Gear/directive level at which this reward is granted. For mission and directive rewards, often 0 (chance-based).
    */
@@ -991,7 +1013,7 @@ export interface LevelUnlockEntry {
   /**
    * Set on LevelUnlock_UpgradeRarity, LevelUnlock_SkinRarity, and LevelUnlock_RarityReward. Rarity tier of the upgrade/skin/reward granted. "None" appears for unspecified.
    */
-  Rarity?: "Standard" | "Rare" | "Epic" | "Exotic" | "None";
+  Rarity?: "Standard" | "Rare" | "Epic" | "Exotic" | "Oddity" | "Contraband" | "None";
   /**
    * Set on LevelUnlock_XP. Amount of player XP granted.
    */
@@ -1160,7 +1182,7 @@ export interface Resource {
   /**
    * Rarity tier.
    */
-  Rarity?: "Standard" | "Rare" | "Epic" | "Exotic";
+  Rarity?: "Standard" | "Rare" | "Epic" | "Exotic" | "Oddity" | "Contraband";
   /**
    * UI visibility policy from PlayerResource+VisibilityOptions (e.g. AlwaysShow).
    */
@@ -1366,6 +1388,7 @@ export interface MissionEntry {
    * Rewards granted on repeat completions (LevelUnlockEntry list).
    */
   RepeatRewards?: LevelUnlockEntry[];
+  Incursion?: IncursionData;
   /**
    * Full Mission ScriptableObject serialized via Unity JsonUtility. Captures every subclass-specific [SerializeField] field — e.g. AmalgamationMission.region/scene/globalEvent/hardModeModifierCount, CleanupDetailMission.cleanupDetailObjective/trailCount/bossObjective/bossVoiceline, SatelliteSalvageMission.powerDecommissionersObjective/alignDecommissionersObjective/satelliteObjective/decommissionerCount/powerLineCount, SaxoniteExcavationMission.corroderObjective/purgeObjective/prospectingCount, etc. Object references appear as {"instanceID":N,"@ref":"<type>:<key>"} pairs so consumers can resolve them against the catalog (objectives/regions/missionModifiers/globalEvents/lootPools).
    */
@@ -1383,6 +1406,38 @@ export interface SceneRef {
    * Localization key for the location's display name.
    */
   LocationName?: string;
+}
+/**
+ * Present only on the IncursionMission entry. Floor-reward scaling and fungal thresholds that live in private static fields JsonUtility can't reach (so they're absent from RawData).
+ */
+export interface IncursionData {
+  /**
+   * Antimass Substrate granted the first time you reach each listed floor. Source: IncursionMission.antimassByFloor.
+   */
+  AntimassByFloor?: AntimassFloorReward[];
+  /**
+   * Antimass granted per extra-floor interval past the last table floor.
+   */
+  AntimassPerExtraFloor?: number;
+  /**
+   * Floor interval at which AntimassPerExtraFloor is granted past the table (e.g. 2 = every other floor).
+   */
+  ExtraFloorInterval?: number;
+  /**
+   * Floor counts at which fungal-infestation layers escalate. Source: IncursionRoom.fungalFloorThresholds.
+   */
+  FungalFloorThresholds?: number[];
+}
+export interface AntimassFloorReward {
+  Floor?: number;
+  /**
+   * First-time Antimass reward at this floor.
+   */
+  Antimass?: number;
+  /**
+   * Reduced reward if you already reached this floor this week.
+   */
+  RepeatAntimass?: number;
 }
 /**
  * An objective prefab (NetworkBehaviour deriving from ObjectiveBase). Missions reference these through serialized fields — e.g. CleanupDetailMission.cleanupDetailObjective points here. Discovered via Resources.FindObjectsOfTypeAll<ObjectiveBase>(). 35 prefabs observed across 33 unique subclasses (EnemyWaveObjective is reused for Abomination/GenericGunk; EradicateObjective likewise).
@@ -1896,7 +1951,7 @@ export interface AuthItem {
   ID: string;
   Name?: string;
   Color?: string;
-  Rarity?: "Standard" | "Rare" | "Epic" | "Exotic";
+  Rarity?: "Standard" | "Rare" | "Epic" | "Exotic" | "Oddity" | "Contraband";
   /**
    * Character APIName (matches `characters` map key).
    */
@@ -2425,4 +2480,90 @@ export interface UpgradePresetEntry {
    * Full `UpgradePreset` ScriptableObject serialized via Unity `JsonUtility`. Captures the inner `properties: UpgradePropertyList` (each entry an `UpgradeProperty` subclass — colors, trim refs, texture overrides — same shape as per-skin properties).
    */
   RawData?: {};
+}
+/**
+ * Rewards/unlocks granted at a given player level, shown when clicking your player level.
+ */
+export interface LevelMilestoneEntry {
+  Level?: number;
+  Items?: {
+    /**
+     * Already-localized milestone label (HoverInfo.Item.Name).
+     */
+    Label?: string;
+    /**
+     * Icon texture name, when present.
+     */
+    Icon?: string;
+  }[];
+}
+/**
+ * Pattern Infuser (HUB) cost formula — spend Antimass Substrate to infuse one upgrade's pattern into another. Hardcoded constants transcribed from `PatternInfuserWindow`.
+ */
+export interface PatternInfusion {
+  /**
+   * Player level that unlocks the Infuser (13).
+   */
+  UnlockLevel?: number;
+  /**
+   * Resource spent ("antimass").
+   */
+  ResourceID?: string;
+  BaseCost?: number;
+  /**
+   * Added per cell-count difference between the two upgrades.
+   */
+  CostPerCellDifference?: number;
+  /**
+   * Floor on the cell-difference term.
+   */
+  MinCost?: number;
+  /**
+   * Added per rarity tier of the target upgrade (Standard=0..Contraband=5).
+   */
+  CostPerRarityLevel?: number;
+  /**
+   * Human-readable formula summary.
+   */
+  CostFormula?: string;
+}
+/**
+ * The `DirectiveManager` ScriptableObject — per-tier reward multipliers and tiered reward pools above the individual `directives`.
+ */
+export interface DirectiveManagerEntry {
+  TierCount?: number;
+  PageRewardInterval?: number;
+  /**
+   * Per-tier (index 0..3) kill-progress multiplier.
+   */
+  KillsMultiplier?: number[];
+  HeavyKillsMultiplier?: number[];
+  MissionsMultiplier?: number[];
+  /**
+   * Reward pool per tier (index 0..3); each is a list of LevelUnlockEntry.
+   */
+  TierRewards?: LevelUnlockEntry[][];
+  Page10Rewards?: LevelUnlockEntry[];
+}
+/**
+ * A per-player-level upgrade-grid size curve (GridProfile SO).
+ */
+export interface GridProfileEntry {
+  /**
+   * At each listed Level the grid becomes Width×Height cells.
+   */
+  GridSizes?: {
+    Level?: number;
+    Width?: number;
+    Height?: number;
+  }[];
+}
+/**
+ * A Planet SO's biome composition.
+ */
+export interface PlanetEntry {
+  /**
+   * Raw planetBiomeData int array used by the world generator.
+   */
+  BiomeData?: number[];
 }
