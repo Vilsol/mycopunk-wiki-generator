@@ -70,6 +70,7 @@ export interface EntityUploadConfig<T> {
 	name: string; // 'upgrades' | 'gears'
 	loadItems: () => T[];
 	pageTitle: (item: T) => string;
+	basePageTitle: (item: T) => string;
 	safeFilename: (item: T) => string; // matches *.source.wiki / *.skeleton.wiki basenames
 	infoboxDescription: (item: T) => string; // for classifier preamble fuzzy-match
 	identLabel: (item: T) => string; // for log lines

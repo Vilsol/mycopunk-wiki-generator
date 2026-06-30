@@ -16,6 +16,7 @@ import type { DIcon } from './data/schema';
 import type { EntityClassifierConfig, EntityFileSpec, EntityUploadConfig } from './upload-pipeline';
 import type { RGBColor } from './icon-extractor';
 import { readDump } from './dump';
+import { finalTitle, titleKey } from './title-resolver.ts';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Public types
@@ -49,7 +50,8 @@ export interface EntityDefinition<T> {
 	// === Identification ===
 	safeFilename: (item: T) => string; // *.source.wiki / *.skeleton.wiki basename
 	displayFilename: (item: T) => string; // for File: uploads (icons, patterns, …)
-	pageTitle: (item: T) => string;
+	pageTitle: (item: T) => string; // base title (collision resolution wraps this)
+	disambiguationLabel?: (item: T) => string; // suffix label when this entity loses a collision
 	identLabel?: (item: T) => string; // for log lines (default: safeFilename)
 	infoboxDescription?: (item: T) => string; // for classifier preamble (default: '')
 
@@ -79,7 +81,9 @@ export interface MaterializedEntity<T> {
 	loadItems: () => T[];
 	safeFilename: (item: T) => string;
 	displayFilename: (item: T) => string;
-	pageTitle: (item: T) => string;
+	pageTitle: (item: T) => string; // collision-resolved
+	basePageTitle: (item: T) => string; // raw, pre-resolution (used by the resolver)
+	disambiguationLabel?: (item: T) => string;
 	identLabel: (item: T) => string;
 	classifier: EntityClassifierConfig;
 	templateName: string;
@@ -202,10 +206,15 @@ export function defineEntity<T>(def: EntityDefinition<T>): MaterializedEntity<T>
 
 	const fileTypes = def.fileTypes ?? [];
 
+	const basePageTitle = def.pageTitle;
+	const resolvedPageTitle = (item: T): string =>
+		finalTitle(titleKey(def.name, def.safeFilename(item)), basePageTitle(item));
+
 	const uploadConfig: EntityUploadConfig<T> = {
 		name: def.name,
 		loadItems: def.loadItems,
-		pageTitle: def.pageTitle,
+		pageTitle: resolvedPageTitle,
+		basePageTitle,
 		safeFilename: def.safeFilename,
 		infoboxDescription,
 		identLabel,
@@ -219,7 +228,9 @@ export function defineEntity<T>(def: EntityDefinition<T>): MaterializedEntity<T>
 		loadItems: def.loadItems,
 		safeFilename: def.safeFilename,
 		displayFilename: def.displayFilename,
-		pageTitle: def.pageTitle,
+		pageTitle: resolvedPageTitle,
+		basePageTitle,
+		disambiguationLabel: def.disambiguationLabel,
 		identLabel,
 		classifier,
 		templateName: def.templateName,

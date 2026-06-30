@@ -95,4 +95,8 @@ describe('finalTitle / helpers', () => {
 	test('hierarchy ranks gears above enemies', () => {
 		expect(ENTITY_HIERARCHY.indexOf('gears')).toBeLessThan(ENTITY_HIERARCHY.indexOf('enemies'));
 	});
+
+	test('defaultLabel handles -ies plurals', () => {
+		expect(defaultLabel('rarities')).toBe('Rarity');
+	});
 });

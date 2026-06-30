@@ -99,28 +99,29 @@ export function titleKey(entity: string, safeFilename: string): string {
 	return `${entity}\x00${safeFilename}`;
 }
 
-// Default disambiguation label: Title-case + drop a trailing plural 's'.
+// Default disambiguation label: Title-case + singularize.
 export function defaultLabel(entityName: string): string {
-	const singular = entityName.endsWith('s') ? entityName.slice(0, -1) : entityName;
+	const singular = entityName.endsWith('ies')
+		? `${entityName.slice(0, -3)}y`
+		: entityName.endsWith('s')
+			? entityName.slice(0, -1)
+			: entityName;
 	return singular.charAt(0).toUpperCase() + singular.slice(1);
 }
 
-let prepared = false;
 let overridesCache = new Map<string, string>();
-let reportCache: CollisionReport = { groups: [], crossEntityCount: 0, withinEntityCount: 0 };
+let preparePromise: Promise<CollisionReport> | null = null;
 
-// Load every entity once, build the override map + report. Memoized.
-export async function prepareTitleResolution(): Promise<CollisionReport> {
-	if (prepared) return reportCache;
+// Load every entity once, build the override map + report. Memoized on the
+// promise so concurrent callers share a single build.
+export function prepareTitleResolution(): Promise<CollisionReport> {
+	return (preparePromise ??= buildTitleResolution());
+}
+
+async function buildTitleResolution(): Promise<CollisionReport> {
 	const byTitle = new Map<string, Occupant[]>();
 	for (const name of knownEntities()) {
-		// basePageTitle and disambiguationLabel are added to MaterializedEntity in Task 3.
-		// Until then, cast to access them safely (both calls are try-guarded at runtime).
-		const ent = (await getEntity(name)) as unknown as {
-			uploadConfig: { loadItems: () => unknown[]; safeFilename: (i: unknown) => string };
-			basePageTitle: (i: unknown) => string;
-			disambiguationLabel?: (i: unknown) => string;
-		};
+		const ent = await getEntity(name);
 		let items: unknown[];
 		try {
 			items = ent.uploadConfig.loadItems();
@@ -143,9 +144,7 @@ export async function prepareTitleResolution(): Promise<CollisionReport> {
 	}
 	const result = resolveCollisions(byTitle, ENTITY_HIERARCHY);
 	overridesCache = result.overrides;
-	reportCache = result.report;
-	prepared = true;
-	return reportCache;
+	return result.report;
 }
 
 // Sync lookup used by the pageTitle wrapper. Falls back to base when no
