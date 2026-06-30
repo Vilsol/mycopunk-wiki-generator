@@ -56,6 +56,13 @@ function renderRolls(c: Extract<Change, { kind: 'rolls' }>): string {
 	return `* '''${escapeWiki(c.stat)}''' rolls: ${fmtRange(c.fromMin, c.fromMax)} → ${fmtRange(c.toMin, c.toMax)}`;
 }
 
+function renderCategory(c: Extract<Change, { kind: 'category' }>, ctx: RenderContext): string {
+	const showQualifier = !ctx.uniqueStatNames.has(c.stat);
+	const inLabel = showQualifier ? ` (in ''${escapeWiki(c.property)}'')` : '';
+	const parts = c.counts.map((e) => `${escapeWiki(e.value)} ${e.from} → ${e.to}`);
+	return `* '''${escapeWiki(c.stat)}'''${inLabel}: ${parts.join(', ')}`;
+}
+
 function renderStatLine(
 	c: Extract<Change, { kind: 'stat' | 'stat-add' | 'stat-remove' }>,
 	ctx: RenderContext
@@ -104,6 +111,8 @@ function renderChange(c: Change, ctx: RenderContext): string | null {
 			return renderStatLine(c, ctx);
 		case 'rolls':
 			return renderRolls(c);
+		case 'category':
+			return renderCategory(c, ctx);
 		case 'property-add':
 			return `* New property: ''${escapeWiki(c.property)}''`;
 		case 'property-remove':

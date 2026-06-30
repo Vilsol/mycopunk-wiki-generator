@@ -64,3 +64,68 @@ describe('diffDumps rolls', () => {
 		});
 	});
 });
+
+// Dump with one upgrade, one property, a single stat under N upgradable keys.
+function statDump(perKey: Record<string, string>, statName = 'Adds') {
+	const StatsByUpgradable: Record<string, { name: string; value: string; IsValid: boolean }[]> = {};
+	for (const [k, v] of Object.entries(perKey)) {
+		StatsByUpgradable[k] = [{ name: statName, value: v, IsValid: true }];
+	}
+	return {
+		upgrades: {
+			'1': {
+				ID: '1',
+				Name: 'Grid',
+				Properties: [{ Type: 'UpgradeProperty_Grid', Label: 'Grow Grid', StatsByUpgradable }]
+			}
+		}
+	};
+}
+
+describe('diffDumps categorical aggregation', () => {
+	test('aggregates a multi-key categorical change into per-value counts', () => {
+		const prev = statDump({ s0: 'Row', s1: 'Row', s2: 'Column' });
+		const curr = statDump({ s0: 'Column', s1: 'Column', s2: 'Column' });
+		const change = diffDumps(prev, curr)
+			.get('1')
+			?.find((c) => c.kind === 'category');
+		expect(change).toEqual({
+			kind: 'category',
+			property: 'Grow Grid',
+			stat: 'Adds',
+			counts: [
+				{ value: 'Column', from: 1, to: 3 },
+				{ value: 'Row', from: 2, to: 0 }
+			]
+		});
+	});
+
+	test('suppresses a pure reshuffle (multiset unchanged)', () => {
+		const prev = statDump({ s0: 'Row', s1: 'Column' });
+		const curr = statDump({ s0: 'Column', s1: 'Row' });
+		expect(diffDumps(prev, curr).get('1')).toBeUndefined();
+	});
+
+	test('single-key categorical stays a plain stat change', () => {
+		const prev = statDump({ s0: 'Row' });
+		const curr = statDump({ s0: 'Column' });
+		const changes = diffDumps(prev, curr).get('1') ?? [];
+		expect(changes).toEqual([
+			{ kind: 'stat', property: 'Grow Grid', stat: 'Adds', from: 'Row', to: 'Column' }
+		]);
+	});
+
+	test('numeric multi-key stats keep per-key stat changes', () => {
+		const prev = statDump({ a: '+10%', b: '+10%' }, 'Damage');
+		const curr = statDump({ a: '+20%', b: '+10%' }, 'Damage');
+		const changes = diffDumps(prev, curr).get('1') ?? [];
+		expect(changes.filter((c) => c.kind === 'category')).toEqual([]);
+		expect(changes).toContainEqual({
+			kind: 'stat',
+			property: 'Grow Grid',
+			stat: 'Damage',
+			from: '+10%',
+			to: '+20%'
+		});
+	});
+});

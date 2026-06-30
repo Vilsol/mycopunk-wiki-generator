@@ -55,5 +55,11 @@ export type Change =
 			toMin: string;
 			toMax: string;
 	  }
+	| {
+			kind: 'category';
+			property: string;
+			stat: string;
+			counts: { value: string; from: number; to: number }[];
+	  }
 	| { kind: 'property-add'; property: string }
 	| { kind: 'property-remove'; property: string };

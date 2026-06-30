@@ -382,31 +382,75 @@ function diffOneProperty(propLabel: string, prev: DumpProperty, curr: DumpProper
 		}
 	}
 
-	// Compare per-key. Stats added under a NEW upgradable show up as adds.
-	const allKeys = new Set([...prevStats.keys(), ...currStats.keys()]);
-	for (const key of allKeys) {
-		const a = prevStats.get(key);
-		const b = currStats.get(key);
-		if (a && b) {
-			const fa = rangeRender(a);
-			const fb = rangeRender(b);
-			if (fa !== fb) {
-				out.push({
-					kind: 'stat',
-					property: propLabel,
-					stat: a.displayName,
-					from: fa,
-					to: fb
-				});
+	// Compare per stat NAME (across upgradables). A categorical stat (enum
+	// value, not a number) spread across many upgradable keys reshuffles
+	// per-key between versions, so per-key diffing floods the changelog;
+	// aggregate those into a single multiset delta instead.
+	const groupByName = (
+		stats: Map<string, NormalizedStat>
+	): Map<string, Map<string, NormalizedStat>> => {
+		const grouped = new Map<string, Map<string, NormalizedStat>>();
+		for (const [key, s] of stats) {
+			const sep = key.indexOf('\x00');
+			const upgradable = key.slice(0, sep);
+			const name = key.slice(sep + 1);
+			let inner = grouped.get(name);
+			if (!inner) {
+				inner = new Map();
+				grouped.set(name, inner);
+			}
+			inner.set(upgradable, s);
+		}
+		return grouped;
+	};
+
+	const prevByName = groupByName(prevStats);
+	const currByName = groupByName(currStats);
+	const allNames = new Set([...prevByName.keys(), ...currByName.keys()]);
+	for (const name of allNames) {
+		const pv = prevByName.get(name) ?? new Map<string, NormalizedStat>();
+		const cv = currByName.get(name) ?? new Map<string, NormalizedStat>();
+		const upgradables = new Set([...pv.keys(), ...cv.keys()]);
+
+		const isCategorical = [...pv.values(), ...cv.values()].some(
+			(s) => !Number.isFinite(parseRollNumber(rangeRender(s)))
+		);
+
+		if (isCategorical && upgradables.size > 1) {
+			const countOf = (m: Map<string, NormalizedStat>): Map<string, number> => {
+				const c = new Map<string, number>();
+				for (const s of m.values()) {
+					const v = rangeRender(s);
+					c.set(v, (c.get(v) ?? 0) + 1);
+				}
+				return c;
+			};
+			const pc = countOf(pv);
+			const cc = countOf(cv);
+			const values = [...new Set([...pc.keys(), ...cc.keys()])].sort();
+			const counts = values
+				.map((value) => ({ value, from: pc.get(value) ?? 0, to: cc.get(value) ?? 0 }))
+				.filter((e) => e.from !== e.to);
+			if (counts.length > 0) {
+				out.push({ kind: 'category', property: propLabel, stat: name, counts });
+			}
+			continue;
+		}
+
+		// Numeric, or single-key categorical: per-upgradable range compare.
+		// Cross-version single-stat appearances are covered by the StatNames
+		// set diff above.
+		for (const upgradable of upgradables) {
+			const a = pv.get(upgradable);
+			const b = cv.get(upgradable);
+			if (a && b) {
+				const fa = rangeRender(a);
+				const fb = rangeRender(b);
+				if (fa !== fb) {
+					out.push({ kind: 'stat', property: propLabel, stat: name, from: fa, to: fb });
+				}
 			}
 		}
-		// We don't emit stat-add/stat-remove for cross-version single-stat
-		// appearances on the same property — those are already covered by
-		// the StatNames set diff above (which is per-upgrade-wide). If the
-		// only thing that changed is a stat appearing under a new
-		// upgradable key for an existing stat name, we treat that as a
-		// new value (handled by the `b && !a` branch falling through —
-		// no entry, since adds are tracked at StatNames level).
 	}
 
 	// Rolled-values range diffs. Show how the obtainable min–max moved;

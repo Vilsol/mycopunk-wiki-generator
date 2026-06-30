@@ -100,6 +100,34 @@ describe('renderChangelogSection collapsing', () => {
 	});
 });
 
+describe('renderChangelogSection category', () => {
+	// 'Adds' is the only StatName here, so the (in <Property>) qualifier is
+	// suppressed.
+	const gridUpgrade = { Properties: [{ StatNames: ['Adds'] }] };
+
+	test('renders an aggregated categorical change as per-value counts', () => {
+		const history: ChangeRecord[] = [
+			{
+				version: 'v1.9.4',
+				dumpedAt: '2026-06-30T00:00:00Z',
+				changes: [
+					{
+						kind: 'category',
+						property: 'Grow Grid',
+						stat: 'Adds',
+						counts: [
+							{ value: 'Row', from: 8, to: 3 },
+							{ value: 'Column', from: 9, to: 14 }
+						]
+					}
+				]
+			}
+		];
+		const out = renderChangelogSection(history, gridUpgrade);
+		expect(out).toContain("'''Adds''': Row 8 → 3, Column 9 → 14");
+	});
+});
+
 describe('prependBaselineRecords', () => {
 	const oldest = { version: 'v1.7.3', dumpedAt: '2026-04-29T00:00:00Z' };
 

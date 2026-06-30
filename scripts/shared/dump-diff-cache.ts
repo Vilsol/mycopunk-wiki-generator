@@ -18,8 +18,8 @@ import type { DataDump } from './upgrades/types.ts';
 // caches written by an older format are treated as stale and recomputed
 // instead of being replayed (which would feed malformed records to the
 // renderer). v2: `rolls` carries fromMin/fromMax/toMin/toMax (was
-// added/removed).
-export const CHANGE_FORMAT_VERSION = 2;
+// added/removed). v3: categorical multi-key stats aggregate into `category`.
+export const CHANGE_FORMAT_VERSION = 3;
 
 interface CachedDiff {
 	formatVersion: number;
