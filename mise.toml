@@ -23,6 +23,11 @@ python = "3.13.5"
 description = "Fetch latest game data dump + JSON schema into .dump-cache/"
 run = "bun scripts/sync-data.ts"
 
+[tasks."report:collisions"]
+description = "Report cross-entity (resolved) + within-entity page-title collisions"
+depends = ["release:sync"]
+run = "bun scripts/report-collisions.ts"
+
 # === Source generation ─────────────────────────────────────────────────
 
 [tasks."release:source"]

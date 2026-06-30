@@ -109,7 +109,9 @@ describe('integration: D-19 Dart resolves deterministically', () => {
 		await prepareTitleResolution();
 		const gears = await getEntity('gears');
 		const enemies = await getEntity('enemies');
-		const gearKart = gears.uploadConfig.loadItems().find((g) => gears.basePageTitle(g) === 'D-19 Dart');
+		const gearKart = gears.uploadConfig
+			.loadItems()
+			.find((g) => gears.basePageTitle(g) === 'D-19 Dart');
 		const enemyKart = enemies.uploadConfig
 			.loadItems()
 			.find((e) => enemies.basePageTitle(e) === 'D-19 Dart');
