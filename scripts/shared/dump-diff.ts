@@ -416,7 +416,7 @@ function diffOneProperty(propLabel: string, prev: DumpProperty, curr: DumpProper
 			(s) => !Number.isFinite(parseRollNumber(rangeRender(s)))
 		);
 
-		if (isCategorical && upgradables.size > 1) {
+		if (isCategorical && pv.size > 0 && cv.size > 0 && upgradables.size > 1) {
 			const countOf = (m: Map<string, NormalizedStat>): Map<string, number> => {
 				const c = new Map<string, number>();
 				for (const s of m.values()) {

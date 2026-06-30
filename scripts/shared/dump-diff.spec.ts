@@ -128,4 +128,15 @@ describe('diffDumps categorical aggregation', () => {
 			to: '+20%'
 		});
 	});
+
+	test('does not aggregate when the categorical stat is absent on one side', () => {
+		// A wholly-new (or removed) multi-key categorical stat is already
+		// reported by the StatNames set diff; the category branch must not
+		// also emit a redundant "0 → n" line. Mirrors the numeric branch's
+		// both-sides guard.
+		const prev = statDump({});
+		const curr = statDump({ s0: 'Row', s1: 'Column' });
+		const changes = diffDumps(prev, curr).get('1') ?? [];
+		expect(changes.filter((c) => c.kind === 'category')).toEqual([]);
+	});
 });
