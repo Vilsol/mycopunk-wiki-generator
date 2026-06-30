@@ -209,8 +209,8 @@ async function uploadOne(
 }
 
 async function main() {
-	await prepareTitleResolution();
 	const options = parseArgs(process.argv.slice(2));
+	await prepareTitleResolution();
 	const gameVersion = loadGameVersion();
 	console.log(`Game version (from data.json): ${gameVersion}`);
 	if (options.dryRun) console.log('🔍 DRY RUN — no uploads will happen');

@@ -80,8 +80,8 @@ async function generateOne(name: string, filterAPIName?: string): Promise<number
 }
 
 async function main() {
-	await prepareTitleResolution();
 	const opts = parseArgs(process.argv.slice(2));
+	await prepareTitleResolution();
 	if (!opts.entity && !opts.all) {
 		console.error('Pass --entity=<name> or --all. See --help.');
 		process.exit(2);

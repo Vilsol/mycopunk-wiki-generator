@@ -663,8 +663,8 @@ async function uploadOneEntity(
 }
 
 async function main() {
-	await prepareTitleResolution();
 	const options = parseArgs(process.argv.slice(2));
+	await prepareTitleResolution();
 	const gameVersion = loadGameVersion();
 	console.log(`Game version: ${gameVersion}`);
 	if (options.dryRun) console.log(`🔍 Dry run — no edits will be made.`);

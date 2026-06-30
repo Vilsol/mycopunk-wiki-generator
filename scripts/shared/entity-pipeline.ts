@@ -28,6 +28,40 @@ export interface EntityPipelineResult {
 	errors: number;
 }
 
+type RenderOpts<T> = Pick<
+	EntityPipelineOptions<T>,
+	'templateName' | 'skeletonTemplateName' | 'context' | 'titleFn'
+>;
+
+// Internal: render one item using an existing Eta instance.
+async function renderItemWithEta<T>(
+	eta: Eta,
+	opts: RenderOpts<T>,
+	item: T
+): Promise<{ source: string; skeleton: string | null }> {
+	const ctx = await opts.context(item);
+	// Stamp the collision-resolved title so skeleton transclusions point to the
+	// correct /source page instead of the raw (pre-resolution) title.
+	ctx.pageTitle = opts.titleFn(item);
+	return {
+		source: eta.render(opts.templateName, ctx),
+		skeleton: opts.skeletonTemplateName ? eta.render(opts.skeletonTemplateName, ctx) : null
+	};
+}
+
+// Exported test seam: render one item without needing an existing Eta instance.
+export async function renderItem<T>(
+	opts: RenderOpts<T>,
+	item: T
+): Promise<{ source: string; skeleton: string | null }> {
+	const projectRoot = getProjectRoot(import.meta.url);
+	const eta = new Eta({
+		views: path.join(projectRoot, 'scripts/templates'),
+		autoTrim: false
+	});
+	return renderItemWithEta(eta, opts, item);
+}
+
 export async function generateEntityPages<T>(
 	opts: EntityPipelineOptions<T>
 ): Promise<EntityPipelineResult> {
@@ -52,15 +86,17 @@ export async function generateEntityPages<T>(
 
 	for (const item of opts.items) {
 		try {
-			const ctx = await opts.context(item);
-			const sourceContent = eta.render(opts.templateName, ctx);
+			const { source: sourceContent, skeleton: skeletonContent } = await renderItemWithEta(
+				eta,
+				opts,
+				item
+			);
 			const base = opts.filenameFn(item);
 			const sourceFile = path.join(opts.outputDir, `${base}.source.wiki`);
 			fs.writeFileSync(sourceFile, sourceContent, 'utf8');
 
 			let skeletonName = '';
-			if (opts.skeletonTemplateName) {
-				const skeletonContent = eta.render(opts.skeletonTemplateName, ctx);
+			if (opts.skeletonTemplateName && skeletonContent !== null) {
 				const skeletonFile = path.join(opts.outputDir, `${base}.skeleton.wiki`);
 				fs.writeFileSync(skeletonFile, skeletonContent, 'utf8');
 				skeletonName = path.basename(skeletonFile);
