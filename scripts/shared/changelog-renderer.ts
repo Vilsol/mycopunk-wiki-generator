@@ -150,6 +150,11 @@ export function renderChangelogSection(
 	const nonEmpty = history.filter((r) => r.changes.length > 0);
 	if (nonEmpty.length === 0) return '';
 
+	// Each version keeps a visible header with its bullets collapsed beneath
+	// it — the canonical MediaWiki "visible header, collapsible body" idiom.
+	// The heading sits inside `mw-collapsible` (so the toggle attaches to it)
+	// but outside `mw-collapsible-content` (so it stays visible when
+	// collapsed).
 	const renderRecord = (r: ChangeRecord): string => {
 		const heading = `=== ${escapeWiki(r.version)} <small>(${escapeWiki(isoToYmd(r.dumpedAt))})</small> ===`;
 		const bullets: string[] = [];
@@ -157,23 +162,15 @@ export function renderChangelogSection(
 			const line = renderChange(c, ctx);
 			if (line) bullets.push(line);
 		}
-		return [heading, ...bullets].join('\n');
+		return [
+			'<div class="mw-collapsible mw-collapsed">',
+			heading,
+			'<div class="mw-collapsible-content">',
+			...bullets,
+			'</div>',
+			'</div>'
+		].join('\n');
 	};
 
-	if (nonEmpty.length === 1) {
-		// No collapsible wrapper for the single-version case.
-		return renderRecord(nonEmpty[0]);
-	}
-
-	const [latest, ...older] = nonEmpty;
-	const olderBlock = older.map(renderRecord).join('\n\n');
-	return [
-		renderRecord(latest),
-		'',
-		'<div class="mw-collapsible mw-collapsed">',
-		'',
-		olderBlock,
-		'',
-		'</div>'
-	].join('\n');
+	return nonEmpty.map(renderRecord).join('\n\n');
 }
