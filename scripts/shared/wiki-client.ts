@@ -202,6 +202,34 @@ export async function loginBot(projectRoot: string): Promise<void> {
 	loggedIn = true;
 }
 
+// MediaWiki returns `error.code === 'ratelimited'` when the account exceeds
+// its edit/upload quota. It's transient — retry with exponential backoff
+// instead of failing. After the budget is exhausted the last (still-errored)
+// response is returned so the caller's normal error handling fires.
+export async function withRateLimitRetry<T extends { error?: { code?: string } }>(
+	fn: () => Promise<T>,
+	opts: {
+		retries?: number;
+		baseDelayMs?: number;
+		maxDelayMs?: number;
+		sleep?: (ms: number) => Promise<void>;
+	} = {}
+): Promise<T> {
+	const retries = opts.retries ?? 6;
+	const base = opts.baseDelayMs ?? 1000;
+	const maxDelay = opts.maxDelayMs ?? 30_000;
+	const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+
+	let res = await fn();
+	for (let attempt = 0; res.error?.code === 'ratelimited' && attempt < retries; attempt++) {
+		const delay = Math.min(base * 2 ** attempt, maxDelay);
+		console.warn(`    ⏳ ratelimited; backing off ${delay}ms (retry ${attempt + 1}/${retries})`);
+		await sleep(delay);
+		res = await fn();
+	}
+	return res;
+}
+
 interface EditResponse {
 	edit?: { result?: string; nochange?: boolean };
 	error?: { code?: string; info?: string };
@@ -224,10 +252,10 @@ export async function editPage(title: string, content: string, summary: string):
 	};
 
 	if (!cachedCsrfToken) cachedCsrfToken = await fetchToken('csrf');
-	let res = await attempt(cachedCsrfToken);
+	let res = await withRateLimitRetry(() => attempt(cachedCsrfToken!));
 	if (res.error?.code === 'badtoken') {
 		cachedCsrfToken = await fetchToken('csrf');
-		res = await attempt(cachedCsrfToken);
+		res = await withRateLimitRetry(() => attempt(cachedCsrfToken!));
 	}
 	if (res.error) throw new Error(`${res.error.code}: ${res.error.info}`);
 	if (res.edit?.result !== 'Success') {
@@ -275,10 +303,10 @@ export async function uploadFile(
 		return wikiApi.post('api.php', { body: form, timeout: 120_000 }).json<UploadResponse>();
 	};
 
-	let res = await attempt(cachedCsrfToken);
+	let res = await withRateLimitRetry(() => attempt(cachedCsrfToken!));
 	if (res.error?.code === 'badtoken') {
 		cachedCsrfToken = await fetchToken('csrf');
-		res = await attempt(cachedCsrfToken);
+		res = await withRateLimitRetry(() => attempt(cachedCsrfToken!));
 	}
 	if (res.error) throw new Error(`${res.error.code}: ${res.error.info}`);
 	if (res.upload?.result !== 'Success') {
