@@ -14,7 +14,13 @@ import {
 } from '../wiki-text';
 import { defaultIconFileType, defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
 import { loadUpgrades, mapGunName } from './upgrades';
-import { loadSkins, skinPageTitle, variantPreviewFilename, type Skin } from './skins';
+import {
+	loadSkins,
+	skinDisplayName,
+	skinPageTitle,
+	variantPreviewFilename,
+	type Skin
+} from './skins';
 import { fmtNum } from '../format-utils';
 import { buildLevelUnlocksTable } from '../reward-utils';
 import { rarityCell } from '../rarity-display';
@@ -281,7 +287,7 @@ function buildSkinsTable(skins: GenericGunUpgrade[], gearAPIName: string): strin
 
 	const out = ['{| class="wikitable sortable"', '! Preview !! Name !! Rarity !! Variants'];
 	for (const s of matched) {
-		const name = stripHtml(s.upgrade.Name ?? '');
+		const name = skinDisplayName(s);
 		const variants = (s.skin.Previews ?? {})[gearAPIName] ?? {};
 		const variantCount = Object.keys(variants).length;
 		out.push('|-');

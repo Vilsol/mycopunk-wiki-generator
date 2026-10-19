@@ -7,7 +7,13 @@ import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
 import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
 import { defaultIconFileType, defineEntity, loadFromDump } from '../entity-registry';
-import { loadSkins, skinPageTitle, variantPreviewFilename, type Skin } from './skins';
+import {
+	loadSkins,
+	skinDisplayName,
+	skinPageTitle,
+	variantPreviewFilename,
+	type Skin
+} from './skins';
 import { layoutSkillTree } from '../character-skill-tree';
 import { rarityCell } from '../rarity-display';
 export { layoutSkillTree } from '../character-skill-tree';
@@ -281,7 +287,7 @@ function buildSkinsTable(skins: GenericGunUpgrade[]): string {
 
 	const out = ['{| class="wikitable sortable"', '! Preview !! Name !! Rarity !! Variants'];
 	for (const s of matched) {
-		const name = stripHtml(s.upgrade.Name ?? '');
+		const name = skinDisplayName(s);
 		const variantCount = Object.values(s.skin.Previews ?? {}).reduce(
 			(n, m) => n + Object.keys(m).length,
 			0

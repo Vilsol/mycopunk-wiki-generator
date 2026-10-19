@@ -6,7 +6,7 @@ import type { UpgradePresetEntry } from '../data/schema.d';
 import { readDump } from '../dump';
 import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
 import { defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
-import { loadSkins, skinPageTitle, type Skin } from './skins';
+import { loadSkins, skinDisplayName, skinPageTitle, type Skin } from './skins';
 import { buildModifiersTable, loadParentLookup, parentLink } from './skins';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ function buildUsedBySkinsTable(skins: Skin[]): string {
 	const seen = new Set<string>();
 	for (const s of skins) {
 		const title = skinPageTitle(s);
-		const display = stripHtml(s.upgrade.Name ?? '');
+		const display = skinDisplayName(s);
 		const dedupKey = `${title}|${s.parents.join(',')}`;
 		if (seen.has(dedupKey)) continue;
 		seen.add(dedupKey);

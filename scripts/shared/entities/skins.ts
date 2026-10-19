@@ -26,6 +26,9 @@ export interface Skin {
 	skin: DSkin;
 	parents: string[];
 	parentDisplays: string[];
+	// Set when several obtainable skins share a title (e.g. the six
+	// Constellation variants); taken from the skin's single name modifier.
+	variant?: string;
 }
 
 const SKIN_NAME_TEST_PATTERN = /^_test|\.[a-z]+$/;
@@ -61,11 +64,38 @@ export function loadSkins(): Skin[] {
 		if (c) return c;
 		return (a.parentDisplays[0] ?? '').localeCompare(b.parentDisplays[0] ?? '');
 	});
+	return disambiguate(out);
+}
+
+const isHidden = (s: Skin) => s.upgrade.CollectionSource?.startsWith('Hidden') ?? false;
+
+// Same-title skins are either hidden internal copies of an obtainable skin
+// (linked via BaseSkin / CountWithInCodex) — dropped — or genuine variants
+// told apart by their single name modifier.
+function disambiguate(skins: Skin[]): Skin[] {
+	const titles = skins.map(skinPageTitle);
+	const byTitle = new Map<string, Skin[]>();
+	skins.forEach((s, i) => byTitle.set(titles[i], [...(byTitle.get(titles[i]) ?? []), s]));
+
+	const out: Skin[] = [];
+	skins.forEach((s, i) => {
+		const group = byTitle.get(titles[i])!;
+		const obtainable = group.filter((o) => !isHidden(o));
+		if (isHidden(s) && obtainable.length > 0) return;
+		if (obtainable.length > 1 && s.skin.NameModifiers?.length === 1) {
+			s.variant = stripHtml(s.skin.NameModifiers[0]).trim();
+		}
+		out.push(s);
+	});
 	return out;
 }
 
 export function plainName(s: Skin): string {
 	return stripHtml(s.upgrade.Name ?? '').trim();
+}
+
+export function skinDisplayName(s: Skin): string {
+	return s.variant ? `${plainName(s)}: ${s.variant}` : plainName(s);
 }
 
 // Cosmetic.APIName collides across parents (3× "Factory"), so the only
@@ -75,14 +105,14 @@ export function safeFilename(s: Skin): string {
 }
 
 export function skinPageTitle(s: Skin): string {
-	const name = plainName(s);
+	const name = skinDisplayName(s);
 	if (s.parentDisplays.length === 1) return `${s.parentDisplays[0]} ${name} Skin`;
 	if (s.parentDisplays.length > 1) return `${name} (Universal Skin)`;
 	return `${name} Skin`;
 }
 
 export function displayFilename(s: Skin): string {
-	const name = plainName(s);
+	const name = s.variant ? `${plainName(s)}_${s.variant}` : plainName(s);
 	const base =
 		s.parentDisplays.length === 1
 			? `${s.parentDisplays[0]}_${name}_Skin`
@@ -365,7 +395,7 @@ function flagChips(skin: Skin['skin']): string {
 
 export function buildSkinContext(s: Skin): Record<string, unknown> {
 	const presets = loadPresetMap();
-	const name = plainName(s);
+	const name = skinDisplayName(s);
 	const u = s.upgrade;
 
 	const parentLinks = s.parentDisplays.map((p) => `[[${p}]]`).join(', ');
