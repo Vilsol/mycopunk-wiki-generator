@@ -71,8 +71,14 @@ export function mapGunName(rawName: string): string {
 	return gunMappings[stripped] ?? stripped;
 }
 
+// Names may carry C#-source escapes (`Safety \"Regulations\"`) as well as
+// rich-text tags.
+function plainUpgradeName(name: string | null | undefined): string {
+	return stripHtml(name).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+}
+
 export function upgradePageTitle(upgrade: GenericGunUpgrade): string {
-	return `${stripHtml(upgrade.Name)} Upgrade`;
+	return `${plainUpgradeName(upgrade.Name)} Upgrade`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -105,7 +111,7 @@ export function loadUpgradeEnrichment(): UpgradeEnrichment {
 
 	const upgradeNamesByID = new Map<string, string>();
 	for (const u of Object.values(data.upgrades ?? {}) as { ID: string; Name: string }[]) {
-		upgradeNamesByID.set(String(u.ID), stripHtml(u.Name ?? ''));
+		upgradeNamesByID.set(String(u.ID), plainUpgradeName(u.Name));
 	}
 
 	return { authItemsByUpgradeID, skillTreeByUpgradeID, upgradeNamesByID };
