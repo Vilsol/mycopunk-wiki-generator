@@ -28,6 +28,10 @@ description = "Report cross-entity (resolved) + within-entity page-title collisi
 depends = ["release:sync"]
 run = "bun scripts/report-collisions.ts"
 
+[tasks."report:verify-empty"]
+description = "Independently re-verify host pages the uploader classified safe to overwrite (run after an upload)"
+run = "bun scripts/verify-empty-pages.ts --all"
+
 # === Source generation ─────────────────────────────────────────────────
 
 [tasks."release:source"]
