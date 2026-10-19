@@ -5,7 +5,7 @@
 
 import type { Threat } from '../data/schema.d';
 import { readDump } from '../dump';
-import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName } from '../wiki-text';
+import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
 import { defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
 import { loadUpgradesByID } from './characters';
 import { rgbaToHex } from '../format-utils';
@@ -21,13 +21,18 @@ export function safeFilename(threat: Threat): string {
 	return sanitizeAPIName(threat.ID);
 }
 
+// Names may contain rich-text wrappers (e.g. `<font=H>Impossible</font>`).
+function plainName(threat: Threat): string {
+	return stripHtml(threat.Name).trim();
+}
+
 export function displayFilename(threat: Threat): string {
-	const name = threat.Name || threat.ID;
+	const name = plainName(threat) || threat.ID;
 	return normalizeWikiTitle(sanitizeAPIName(name));
 }
 
 export function threatPageTitle(threat: Threat): string {
-	return threat.Name || threat.NumberLabel || threat.ID;
+	return plainName(threat) || threat.NumberLabel || threat.ID;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -49,7 +54,7 @@ export function buildThreatContext(threat: Threat): Record<string, unknown> {
 		tierNum,
 		colorHex: rgbaToHex(threat.Color),
 		icon: `${displayFilename(threat)}_Icon.png`,
-		seoDescription: `${threat.Name ?? threat.ID} — ${threat.NumberLabel ?? 'mission threat tier'} in Mycopunk.`,
+		seoDescription: `${plainName(threat) || threat.ID} — ${threat.NumberLabel ?? 'mission threat tier'} in Mycopunk.`,
 		rewardsSection,
 		hasRewardsSection: rewardsSection.length > 0
 	};
