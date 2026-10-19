@@ -194,6 +194,16 @@ function classifyHostPage(
 		};
 	}
 
+	// Blank pages are deliberate curator actions (e.g. clearing the leftover
+	// after a page move), not empty skeletons.
+	if (trimmed === '') {
+		return {
+			contentClass: 'unknown',
+			safeToOverwrite: false,
+			curatorEvidence: ['blank page']
+		};
+	}
+
 	const hasLstCalls = /\{\{#lst:/.test(content);
 	const stripped = stripBoilerplate(content, classifier);
 	const sections = parseSections(stripped);
