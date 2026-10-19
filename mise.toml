@@ -129,3 +129,8 @@ run = '''
 bun scripts/upload-wiki.ts --all
 bun scripts/upload-files.ts --all
 '''
+
+[tasks."release:publish"]
+description = "Run the CI release flow locally: sync + regen + upload (sidesteps Cloudflare blocking GH runners)"
+depends = ["release:ci"]
+run = [{ task = "release:upload-ci" }]
