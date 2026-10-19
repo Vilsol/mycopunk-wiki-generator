@@ -4,12 +4,12 @@
 // skeleton the bot would write, and inspects revision history to tell bot
 // edits from human ones.
 //
-// Bot edits are made as the operator's own account (bot passwords log in as
-// `User@botname`), so authorship alone can't separate bot from human; a
-// revision counts as bot-made only when the user matches AND the summary is
-// the uploader's fixed edit summary.
+// The bot has edited under several accounts (including the operator's own,
+// which also makes human edits), so authorship can't separate bot from
+// human; a revision counts as bot-made when it carries the uploader's fixed
+// edit summary.
 //
-// Usage: bun scripts/verify-empty-pages.ts (--entity=NAME | --all) [--bot-user=NAME]
+// Usage: bun scripts/verify-empty-pages.ts (--entity=NAME | --all)
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -53,31 +53,14 @@ function parseArgs() {
 	const args = process.argv.slice(2);
 	const entity = args.find((a) => a.startsWith('--entity='))?.slice('--entity='.length);
 	const all = args.includes('--all');
-	const botUser =
-		args.find((a) => a.startsWith('--bot-user='))?.slice('--bot-user='.length) ?? readBotUser();
 	if (!entity && !all) {
 		console.error('Pass --entity=<name> or --all.');
 		process.exit(1);
 	}
-	if (!botUser) {
-		console.error('Bot user unknown: set MYCOPUNK_BOT_USER or pass --bot-user=NAME.');
-		process.exit(1);
-	}
-	return { entity, all, botUser };
+	return { entity, all };
 }
 
-function readBotUser(): string | undefined {
-	let login = process.env.MYCOPUNK_BOT_USER;
-	const envFile = path.join(root, '.local.env');
-	if (!login && fs.existsSync(envFile)) {
-		const line = fs
-			.readFileSync(envFile, 'utf8')
-			.split('\n')
-			.find((l) => l.startsWith('MYCOPUNK_BOT_USER='));
-		login = line?.slice('MYCOPUNK_BOT_USER='.length).trim();
-	}
-	return login?.split('@')[0];
-}
+const isBot = (r: Revision) => BOT_SUMMARY.test(r.comment ?? '');
 
 function normalizeLine(line: string): string {
 	return decodeEntities(line)
@@ -151,7 +134,21 @@ async function fetchHistory(title: string): Promise<Revision[]> {
 	return revs; // newest first
 }
 
-async function verifyEntity(entity: string, botUser: string): Promise<PageResult[]> {
+async function fetchRevisionContent(revid: number): Promise<string> {
+	const data = await queryWikiApi<{
+		query?: { pages: Record<string, { revisions?: { slots?: { main?: { '*'?: string } } }[] }> };
+	}>({
+		action: 'query',
+		prop: 'revisions',
+		revids: String(revid),
+		rvprop: 'content',
+		rvslots: 'main'
+	});
+	const page = Object.values(data.query?.pages ?? {})[0];
+	return page?.revisions?.[0]?.slots?.main?.['*'] ?? '';
+}
+
+async function verifyEntity(entity: string): Promise<PageResult[]> {
 	const entityDir = path.join(sourceDir, entity);
 	const reportPath = path.join(entityDir, 'upload-report.json');
 	if (!fs.existsSync(reportPath)) {
@@ -167,7 +164,6 @@ async function verifyEntity(entity: string, botUser: string): Promise<PageResult
 
 	const skeletons = loadSkeletonsByTitle(entityDir);
 	const live = await fetchPagesContent(titles);
-	const isBot = (r: Revision) => r.user === botUser && BOT_SUMMARY.test(r.comment ?? '');
 
 	const results: PageResult[] = [];
 	for (const [i, title] of titles.entries()) {
@@ -206,11 +202,21 @@ async function verifyEntity(entity: string, botUser: string): Promise<PageResult
 		const extraLines = lineResidue(liveLines, skelLines);
 		const missingLines = lineResidue(skelLines, liveLines);
 
+		// A human stripping lines the bot wrote (e.g. blanking a moved page) is
+		// a curator decision even though nothing was added. Lines missing only
+		// because the skeleton grew since the last bot edit don't count.
+		let removedByHuman = false;
+		if (extraLines.length === 0 && missingLines.length > 0 && lastEditor === 'human') {
+			removedByHuman =
+				lastBotIdx < 0 ||
+				lineResidue(
+					meaningfulLines(await fetchRevisionContent(history[lastBotIdx].revid)),
+					liveLines
+				).length > 0;
+		}
+
 		let verdict: Verdict;
-		// A human stripping bot lines (e.g. blanking a moved page) is a
-		// curator decision even though nothing was added.
-		if (extraLines.length === 0 && missingLines.length > 0 && lastEditor === 'human')
-			verdict = 'curator-removed';
+		if (removedByHuman) verdict = 'curator-removed';
 		else if (extraLines.length === 0) verdict = 'empty';
 		else if (lastEditor === 'bot') verdict = 'old-bot-skeleton';
 		else verdict = 'curator-content';
@@ -251,16 +257,19 @@ async function verifyEntity(entity: string, botUser: string): Promise<PageResult
 	return results;
 }
 
-const { entity, all, botUser } = parseArgs();
+const { entity, all } = parseArgs();
 const entities = all
 	? fs
 			.readdirSync(sourceDir)
 			.filter((d) => fs.existsSync(path.join(sourceDir, d, 'upload-report.json')))
 	: [entity!];
 
+// old-bot-skeleton text is bot-authored, so it's as safe as empty.
 let notEmpty = 0;
 for (const e of entities) {
-	const results = await verifyEntity(e, botUser);
-	notEmpty += results.filter((r) => r.verdict !== 'empty').length;
+	const results = await verifyEntity(e);
+	notEmpty += results.filter(
+		(r) => r.verdict !== 'empty' && r.verdict !== 'old-bot-skeleton'
+	).length;
 }
 process.exit(notEmpty > 0 ? 1 : 0);
