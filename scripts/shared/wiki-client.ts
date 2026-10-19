@@ -26,6 +26,9 @@ function captureSetCookie(res: Response): void {
 const wikiApi = ky.create({
 	prefixUrl: 'https://mycopunk.miraheze.org/w/',
 	timeout: 30000,
+	headers: {
+		'user-agent': 'MycopunkWikiBot/1.0 (https://github.com/Vilsol/mycopunk-wiki-generator)'
+	},
 	hooks: {
 		beforeRequest: [
 			(req) => {
