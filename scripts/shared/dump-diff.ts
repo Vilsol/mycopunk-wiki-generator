@@ -128,6 +128,7 @@ interface DumpUpgrade {
 	ApplicableTo?: { APIName?: string }[];
 	Properties?: DumpProperty[];
 	OuroborosCost?: ResourceCostEntry[];
+	CanTurbocharge?: boolean;
 	TurbochargeCost?: ResourceCostEntry[];
 }
 
@@ -347,7 +348,43 @@ function collectModifyText(prop: DumpProperty): Map<string, string> {
 	return out;
 }
 
+interface RangeToken {
+	n: number;
+	decimals: number;
+	text: string;
+}
+
+// The pre-v2.0-re-export dumps emit percent stats' min/max as raw
+// multipliers ("1.2048"); later dumps use the in-game "+20.48%". Convert
+// multipliers on percent-valued stats to percent so both read the same.
+function parseRangeToken(token: string, percentStat: boolean): RangeToken | null {
+	const t = token.trim();
+	const n = Number.parseFloat(t.replace(/[^0-9.+-]/g, ''));
+	if (!Number.isFinite(n)) return null;
+	if (t.endsWith('%') || !percentStat) {
+		return { n, decimals: t.split('.')[1]?.replace(/\D/g, '').length ?? 0, text: t };
+	}
+	const pct = Math.round((n - 1) * 1e4) / 100;
+	return { n: pct, decimals: 2, text: `${pct > 0 ? '+' : ''}${pct}%` };
+}
+
+function rangeTokens(stat: NormalizedStat): [RangeToken, RangeToken] | null {
+	if (
+		stat.minValue === undefined ||
+		stat.maxValue === undefined ||
+		stat.minValue === stat.maxValue
+	) {
+		return null;
+	}
+	const percentStat = stat.value.trim().endsWith('%');
+	const a = parseRangeToken(stat.minValue, percentStat);
+	const b = parseRangeToken(stat.maxValue, percentStat);
+	return a && b ? [a, b] : null;
+}
+
 function rangeRender(stat: NormalizedStat): string {
+	const tokens = rangeTokens(stat);
+	if (tokens) return `[${tokens[0].text} – ${tokens[1].text}]`;
 	if (
 		stat.minValue !== undefined &&
 		stat.maxValue !== undefined &&
@@ -356,6 +393,26 @@ function rangeRender(stat: NormalizedStat): string {
 		return `[${stat.minValue} – ${stat.maxValue}]`;
 	}
 	return stat.value;
+}
+
+// Equal when the underlying numbers match within display rounding,
+// regardless of min/max order (the game swaps them for "lower is better").
+function rangesEqual(a: NormalizedStat, b: NormalizedStat): boolean {
+	const ta = rangeTokens(a);
+	const tb = rangeTokens(b);
+	if (!ta || !tb) return rangeRender(a) === rangeRender(b);
+	const tol = 0.5 * 10 ** -Math.min(...ta.map((t) => t.decimals), ...tb.map((t) => t.decimals));
+	const [aLo, aHi] = [ta[0].n, ta[1].n].sort((x, y) => x - y);
+	const [bLo, bHi] = [tb[0].n, tb[1].n].sort((x, y) => x - y);
+	return Math.abs(aLo - bLo) <= tol + 1e-9 && Math.abs(aHi - bHi) <= tol + 1e-9;
+}
+
+// `Label` is a dev-facing class-name derivative (typos included); the
+// player-facing name is the property's StatNames.
+function propertyLabel(p: DumpProperty): string {
+	const names = (p.StatNames ?? []).map(stripHtml).filter(Boolean);
+	if (names.length > 0) return names.join(', ');
+	return p.Label ?? p.Type;
 }
 
 function diffOneProperty(propLabel: string, prev: DumpProperty, curr: DumpProperty): Change[] {
@@ -448,10 +505,14 @@ function diffOneProperty(propLabel: string, prev: DumpProperty, curr: DumpProper
 			const a = pv.get(upgradable);
 			const b = cv.get(upgradable);
 			if (a && b) {
-				const fa = rangeRender(a);
-				const fb = rangeRender(b);
-				if (fa !== fb) {
-					out.push({ kind: 'stat', property: propLabel, stat: name, from: fa, to: fb });
+				if (!rangesEqual(a, b)) {
+					out.push({
+						kind: 'stat',
+						property: propLabel,
+						stat: name,
+						from: rangeRender(a),
+						to: rangeRender(b)
+					});
 				}
 			}
 		}
@@ -533,7 +594,12 @@ function diffOneUpgrade(prev: DumpUpgrade, curr: DumpUpgrade): Change[] {
 	// Costs (with OuroborosCost-derived suppression).
 	const ouro = diffCost('Ouroboros', prev.OuroborosCost, curr.OuroborosCost);
 	if (ouro && !ouroborosCostIsRarityDerived(prev, curr, ouro)) out.push(ouro);
-	const turbo = diffCost('Turbocharge', prev.TurbochargeCost, curr.TurbochargeCost);
+	// The dump omits TurbochargeCost once an upgrade can't be turbocharged;
+	// that's not a cost change.
+	const turbo =
+		curr.CanTurbocharge === false
+			? null
+			: diffCost('Turbocharge', prev.TurbochargeCost, curr.TurbochargeCost);
 	if (turbo) out.push(turbo);
 
 	// Properties.
@@ -542,13 +608,13 @@ function diffOneUpgrade(prev: DumpUpgrade, curr: DumpUpgrade): Change[] {
 		curr.Properties ?? []
 	);
 	for (const { prop } of addedKeys) {
-		out.push({ kind: 'property-add', property: prop.Label ?? prop.Type });
+		out.push({ kind: 'property-add', property: propertyLabel(prop) });
 	}
 	for (const { prop } of removedKeys) {
-		out.push({ kind: 'property-remove', property: prop.Label ?? prop.Type });
+		out.push({ kind: 'property-remove', property: propertyLabel(prop) });
 	}
 	for (const { prev: pp, curr: cp } of matched) {
-		const label = cp.Label ?? cp.Type;
+		const label = propertyLabel(cp);
 		out.push(...diffOneProperty(label, pp, cp));
 	}
 

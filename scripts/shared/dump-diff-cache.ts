@@ -20,7 +20,10 @@ import type { DataDump } from './upgrades/types.ts';
 // renderer). v2: `rolls` carries fromMin/fromMax/toMin/toMax (was
 // added/removed). v3: categorical multi-key stats aggregate into `category`.
 // v4: internal-only flags (`SkillTreeUpgrade`, `None`) no longer diffed.
-export const CHANGE_FORMAT_VERSION = 4;
+// v5: stat ranges compare numerically and render as percent; property
+// qualifiers come from StatNames; no Turbocharge cost diff when the
+// upgrade can't be turbocharged.
+export const CHANGE_FORMAT_VERSION = 5;
 
 interface CachedDiff {
 	formatVersion: number;

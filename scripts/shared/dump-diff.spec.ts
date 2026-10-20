@@ -159,3 +159,91 @@ describe('diffDumps flags', () => {
 		expect(diffDumps(prev, curr).get('1')).toBeUndefined();
 	});
 });
+
+interface RangeStat {
+	value: string;
+	minValue: string;
+	maxValue: string;
+}
+
+function rangeDump(stat: RangeStat, extra: Record<string, unknown> = {}) {
+	return {
+		upgrades: {
+			'1': {
+				ID: '1',
+				Name: 'Range',
+				...extra,
+				Properties: [
+					{
+						Type: 'UpgradeProperty_Range',
+						Label: 'Dev Label Typo',
+						StatNames: ['Range'],
+						StatsByUpgradable: { gun: [{ name: 'Range', IsValid: true, ...stat }] }
+					}
+				]
+			}
+		}
+	};
+}
+
+describe('diffDumps range format', () => {
+	test('multiplier ranges equal to the new percent display are not a change', () => {
+		const prev = rangeDump({ value: '+22.5%', minValue: '1.204819', maxValue: '1.265823' });
+		const curr = rangeDump({ value: '+22.5%', minValue: '+20.48%', maxValue: '+26.58%' });
+		expect(diffDumps(prev, curr).get('1')).toBeUndefined();
+	});
+
+	test('rounded integer percents and swapped min/max are not a change', () => {
+		const prev = rangeDump({ value: '+105.87%', minValue: '1.75', maxValue: '2.1' });
+		const curr = rangeDump({ value: '+105.87%', minValue: '+110%', maxValue: '+75%' });
+		expect(diffDumps(prev, curr).get('1')).toBeUndefined();
+	});
+
+	test('a real numeric shift is reported in matching percent format', () => {
+		const prev = rangeDump({ value: '+105.87%', minValue: '1.75', maxValue: '2.1' });
+		const curr = rangeDump({ value: '+105.87%', minValue: '+80%', maxValue: '+110%' });
+		expect(diffDumps(prev, curr).get('1')).toEqual([
+			{
+				kind: 'stat',
+				property: 'Range',
+				stat: 'Range',
+				from: '[+75% – +110%]',
+				to: '[+80% – +110%]'
+			}
+		]);
+	});
+
+	test('uses StatNames, not the internal Label, as the property name', () => {
+		const prev = { upgrades: {} };
+		const curr = rangeDump({ value: '1', minValue: '1', maxValue: '1' });
+		const withProp = { upgrades: { '1': { ...curr.upgrades['1'], Properties: [] } } };
+		expect(diffDumps(withProp, curr).get('1')).toEqual([
+			{ kind: 'property-add', property: 'Range' }
+		]);
+		expect(diffDumps(prev, curr).get('1')).toEqual([{ kind: 'added' }]);
+	});
+});
+
+describe('diffDumps turbocharge cost', () => {
+	const cost = [{ Count: 100, Resource: 'Romphus', ResourceID: 'romphus' }];
+
+	test('ignores the cost disappearing once the upgrade cannot be turbocharged', () => {
+		const stat = { value: '1', minValue: '1', maxValue: '1' };
+		const prev = rangeDump(stat, { TurbochargeCost: cost });
+		const curr = rangeDump(stat, { CanTurbocharge: false });
+		expect(diffDumps(prev, curr).get('1')).toBeUndefined();
+	});
+
+	test('still reports a real turbocharge cost change', () => {
+		const stat = { value: '1', minValue: '1', maxValue: '1' };
+		const prev = rangeDump(stat, { TurbochargeCost: cost });
+		const curr = rangeDump(stat, {
+			CanTurbocharge: true,
+			TurbochargeCost: [{ Count: 150, Resource: 'Romphus', ResourceID: 'romphus' }]
+		});
+		expect(diffDumps(prev, curr).get('1')?.[0]).toMatchObject({
+			kind: 'cost',
+			currency: 'Turbocharge'
+		});
+	});
+});
