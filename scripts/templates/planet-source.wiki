@@ -1,0 +1,39 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox planet
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.subtitle) { -%>
+|subtitle=<%~ it.subtitle %>
+<% } -%>
+|min_level=<%= it.minLevel %>
+|hazardous=<%~ it.hazardous %>
+|regions=<%= it.regionCount %>
+<% if (it.dailyModifierRegion) { -%>
+|daily_modifier_region=<%~ it.dailyModifierRegion %>
+<% } -%>
+}}<section end="infobox" />
+<% if (it.hasRegions) { %>
+<section begin="regions" />
+<%~ it.regionsSection -%>
+
+<section end="regions" />
+<% } -%>
+<% if (it.hasMissions) { %>
+<section begin="missions" />
+<%~ it.missionsSection -%>
+
+<section end="missions" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Planets]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated planet source pages]]

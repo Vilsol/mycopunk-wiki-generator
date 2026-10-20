@@ -1,0 +1,15 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+
+''To be written.''
+
+== Global events ==
+Community-wide events with a shared progress bar.
+
+{{#lst:<%= it.pageTitle %>/source|global-events}}
+
+== Mission events ==
+Random events that can trigger during a mission, picked by weight.
+
+{{#lst:<%= it.pageTitle %>/source|mission-events}}
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

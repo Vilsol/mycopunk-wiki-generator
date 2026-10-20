@@ -20,10 +20,26 @@ import type {
 	Localization
 } from '../data/schema.d';
 import { readDump } from '../dump';
-import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
+import {
+	escapeWikiText,
+	normalizeWikiTitle,
+	plainText,
+	sanitizeAPIName,
+	stripHtml
+} from '../wiki-text';
 import { defineEntity, lazyLoad } from '../entity-registry';
-import { rgbaToHex } from '../format-utils';
+import { fmtPct, rgbaToHex } from '../format-utils';
 import { buildRewardsTable } from '../reward-utils';
+import {
+	globalEventLink,
+	loadPlanets,
+	loadRegions,
+	missionRegions,
+	planetTitle,
+	regionLink
+} from '../load-world';
+import { loadUpgradesByID } from './characters';
+import { entity as upgradesEntity } from './upgrades';
 
 // `PlainName` and `Index` are present on every dump mission entry but the
 // upstream JSON schema doesn't declare them. Extend locally so consumers
@@ -37,7 +53,7 @@ export type MissionEntry = SchemaMissionEntry & {
 // Loader + identification
 // ─────────────────────────────────────────────────────────────────────────
 
-function isPlaceholderName(m: MissionEntry): boolean {
+export function isPlaceholderName(m: MissionEntry): boolean {
 	return (m.PlainName ?? '').trim() === '???';
 }
 
@@ -400,11 +416,7 @@ function buildRelatedSection(
 	if (events.length > 0) {
 		out.push("'''Ends global events:'''");
 		for (const g of events) {
-			// GlobalEvents don't currently have wiki pages — surface as code refs
-			// for now. When/if a globalEvents pipeline lands these become wikilinks.
-			const id = g.ID ?? '?';
-			const sub = g.Subclass ?? '';
-			out.push(`* <code>${id}</code>${sub ? ` (${sub})` : ''}`);
+			out.push(`* ${globalEventLink(g)}`);
 		}
 	}
 	return out.join('\n');
@@ -430,6 +442,99 @@ function buildRewardsSection(
 		blocks.push(rep);
 	}
 	return blocks.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Region / planet links
+// ─────────────────────────────────────────────────────────────────────────
+
+const getRegions = lazyLoad(loadRegions);
+const getPlanetsByKey = lazyLoad(() => new Map(loadPlanets().map((p) => [p.key, p])));
+const getUpgradesByID = lazyLoad(loadUpgradesByID);
+
+function buildRegionInfo(mission: MissionEntry): { regions: string; planets: string } {
+	const mr = missionRegions(mission.CompatibleLevels, mission.RawData, getRegions());
+	if (mr.all) return { regions: 'All regions', planets: '' };
+	const planetsByKey = getPlanetsByKey();
+	const planetKeys = [...new Set(mr.regions.map((r) => r.Planet).filter((k): k is string => !!k))];
+	return {
+		regions: mr.regions.map((r) => regionLink(r, planetsByKey)).join(', '),
+		planets: planetKeys
+			.map((k) => planetsByKey.get(k))
+			.filter((p) => !!p)
+			.map((p) => `[[${planetTitle(p)}]]`)
+			.join(', ')
+	};
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Roguelike room rewards + Incursion floor rewards
+// ─────────────────────────────────────────────────────────────────────────
+
+interface RoomReward {
+	Room?: number;
+	MinThreat?: number;
+	DiscoveredDropChance?: number;
+	Upgrade?: UnityRef;
+}
+
+function upgradeLink(ref: UnityRef | undefined): string {
+	const id = ref?.['@ref']?.replace(/^upgrade:/, '');
+	if (!id) return '—';
+	const upgrade = getUpgradesByID().get(id);
+	if (!upgrade) return `Upgrade ${id}`;
+	return `[[${upgradesEntity.pageTitle(upgrade)}|${plainText(upgrade.Name)}]]`;
+}
+
+function buildRoomRewardsSection(mission: MissionEntry): string {
+	const raw = (mission.RawData ?? {}) as {
+		roomRewards?: RoomReward[];
+		bossInterval?: number;
+		finalBossRoom?: number;
+	};
+	const out: string[] = [];
+	if (raw.bossInterval) out.push(`* A boss appears every ${raw.bossInterval} rooms`);
+	if (raw.finalBossRoom) out.push(`* Final boss room: ${raw.finalBossRoom}`);
+	const rewards = [...(raw.roomRewards ?? [])].sort(
+		(a, b) => (a.Room ?? 0) - (b.Room ?? 0) || (a.MinThreat ?? 0) - (b.MinThreat ?? 0)
+	);
+	if (rewards.length > 0) {
+		if (out.length > 0) out.push('');
+		out.push('{| class="wikitable"', '! Room !! Min threat !! Drop chance !! Upgrade');
+		for (const r of rewards) {
+			out.push(
+				'|-',
+				`| ${r.Room ?? '—'} || ${r.MinThreat ?? '—'} || ${fmtPct(r.DiscoveredDropChance)} || ${upgradeLink(r.Upgrade)}`
+			);
+		}
+		out.push('|}');
+	}
+	return out.join('\n');
+}
+
+function buildFloorRewardsSection(mission: MissionEntry): string {
+	const inc = mission.Incursion;
+	if (!inc) return '';
+	const out: string[] = [];
+	const floors = inc.AntimassByFloor ?? [];
+	if (floors.length > 0) {
+		out.push('{| class="wikitable"', '! Floor !! [[Antimass Substrate]] !! Repeat this week');
+		for (const f of floors) {
+			out.push('|-', `| ${f.Floor ?? '—'} || ${f.Antimass ?? '—'} || ${f.RepeatAntimass ?? '—'}`);
+		}
+		out.push('|}');
+	}
+	if (inc.AntimassPerExtraFloor && inc.ExtraFloorInterval && floors.length > 0) {
+		const last = Math.max(...floors.map((f) => f.Floor ?? 0));
+		out.push(
+			'',
+			`Past floor ${last}, +${inc.AntimassPerExtraFloor} Antimass Substrate every ${inc.ExtraFloorInterval} floors.`
+		);
+	}
+	if (inc.FungalFloorThresholds && inc.FungalFloorThresholds.length > 0) {
+		out.push('', `Fungal infestation escalates at floors ${inc.FungalFloorThresholds.join(', ')}.`);
+	}
+	return out.join('\n');
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -495,6 +600,10 @@ export function buildMissionContext(mission: MissionEntry): Record<string, unkno
 	const description = stripHtml(mission.Description ?? '').trim();
 	const briefing = (mission.StartVoiceline?.Text ?? '').trim();
 
+	const regionInfo = buildRegionInfo(mission);
+	const roomRewards = buildRoomRewardsSection(mission);
+	const floorRewards = buildFloorRewardsSection(mission);
+
 	const missionType = mission.MissionType ?? '';
 	const hasMissionTypeCategory = missionType.length > 0 && missionType !== 'None';
 
@@ -517,6 +626,9 @@ export function buildMissionContext(mission: MissionEntry): Record<string, unkno
 		missionType,
 		hasMissionTypeCategory,
 		typeName: mission.TypeName ?? '',
+		category: mission.Category ?? '',
+		regions: regionInfo.regions,
+		planets: regionInfo.planets,
 		colorHex: rgbaToHex(mission.Color),
 		icon: `${displayFilename(mission)}_Icon.png`,
 		minIntensity: mission.MinIntensity ?? 0,
@@ -540,6 +652,10 @@ export function buildMissionContext(mission: MissionEntry): Record<string, unkno
 		hasStages: stages.section.length > 0,
 		rewardsSection: rewards,
 		hasRewards: rewards.length > 0,
+		roomRewardsSection: roomRewards,
+		hasRoomRewards: roomRewards.length > 0,
+		floorRewardsSection: floorRewards,
+		hasFloorRewards: floorRewards.length > 0,
 		relatedSection: related,
 		hasRelated: related.length > 0,
 		seoDescription: (
@@ -572,6 +688,8 @@ export const entity = defineEntity<MissionEntry>({
 			'stages',
 			'objectives',
 			'rewards',
+			'room rewards',
+			'floor rewards',
 			'related',
 			'overview'
 		],

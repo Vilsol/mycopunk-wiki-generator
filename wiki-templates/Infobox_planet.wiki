@@ -1,0 +1,51 @@
+<onlyinclude><templatestyles src="Infobox_planet/styles.css" /><infobox theme="planet-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''{{#if: {{{subtitle|}}} | <br/><span style="font-size: 0.7em; font-weight: normal; opacity: 0.85;">{{{subtitle}}}</span>}}</format>
+    </title>
+    <image source="icon">
+        <format>[[File:{{{icon}}}|center|alt=Icon of {{{name}}}]]</format>
+    </image>
+    <panel>
+        <data source="min_level">
+            <label>Min Level</label>
+            <format>{{{min_level}}}</format>
+        </data>
+        <data source="hazardous">
+            <label>Hazardous</label>
+            <format>{{{hazardous}}}</format>
+        </data>
+        <data source="regions">
+            <label>Regions</label>
+            <format>{{{regions}}}</format>
+        </data>
+        <data source="daily_modifier_region">
+            <label>Daily Modifier Region</label>
+            <format>{{{daily_modifier_region}}}</format>
+        </data>{{#if: {{{api_name|}}} |
+        <section collapse="closed">
+            <header>Technical Information</header>
+            <data source="api_name">
+                <label>API Name</label>
+                <format><code>{{{api_name}}}</code></format>
+            </data>
+        </section>}}
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+This template displays a planet in a Portable Infobox.
+
+==How to Use==
+<pre>
+{{Infobox planet
+|name = Display name (e.g. "New Atlas")
+|api_name = Dump key (e.g. "New Atlas")
+|icon = Icon filename
+|subtitle = Subtitle (e.g. "Moon of Krask")
+|min_level = Player level required to travel here
+|hazardous = Yes | No
+|regions = Number of regions
+|daily_modifier_region = Region whose daily modifier applies
+}}
+</pre>
+
+[[Category:Templates]]

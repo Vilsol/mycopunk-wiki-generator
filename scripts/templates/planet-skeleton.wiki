@@ -1,0 +1,14 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+
+''To be written.''
+<% if (it.hasRegions) { %>
+== Regions ==
+{{#lst:<%= it.pageTitle %>/source|regions}}
+<% } -%>
+<% if (it.hasMissions) { %>
+== Missions ==
+{{#lst:<%= it.pageTitle %>/source|missions}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}
