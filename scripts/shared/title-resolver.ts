@@ -100,7 +100,8 @@ export const ENTITY_HIERARCHY = [
 	'mission-modifier-list',
 	'overtime-assignment',
 	'planets',
-	'events'
+	'events',
+	'game-mechanics'
 ];
 
 export function titleKey(entity: string, safeFilename: string): string {

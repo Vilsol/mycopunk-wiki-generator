@@ -2,6 +2,10 @@
 {{#lst:<%= it.pageTitle %>/source|infobox}}
 
 ''To be written.''
+<% if (it.hasScalingSection) { %>
+== Scaling ==
+{{#lst:<%= it.pageTitle %>/source|scaling}}
+<% } -%>
 <% if (it.hasRewardsSection) { %>
 == Mission Rewards ==
 {{#lst:<%= it.pageTitle %>/source|rewards}}

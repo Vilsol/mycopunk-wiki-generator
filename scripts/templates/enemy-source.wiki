@@ -16,6 +16,12 @@
 |tags=<%~ it.tagsText %>
 <% } -%>
 |can_be_despawned=<%~ it.canBeDespawned %>
+<% if (it.limitSlots) { -%>
+|limit_slots=<%~ it.limitSlots %>
+<% } -%>
+<% if (it.armCount) { -%>
+|arm_count=<%~ it.armCount %>
+<% } -%>
 }}<section end="infobox" />
 <% if (it.hasStatsSection) { %>
 <section begin="stats" />
@@ -26,6 +32,16 @@
 <section begin="variants" />
 <%~ it.variantsSection -%>
 <section end="variants" />
+<% } -%>
+<% if (it.hasPartsSection) { %>
+<section begin="parts" />
+<%~ it.partsSection %>
+<section end="parts" />
+<% } -%>
+<% if (it.hasSpawnsSection) { %>
+<section begin="spawns" />
+<%~ it.spawnsSection %>
+<section end="spawns" />
 <% } -%>
 <% if (it.hasLootSection) { %>
 <section begin="loot" />

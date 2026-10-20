@@ -6,6 +6,7 @@ import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '
 import { defaultIconFileType, defineEntity, loadFromDump } from '../entity-registry';
 import { isColliding, STATUS_EFFECT_SUFFIX } from '../cross-entity-collisions';
 import { rgbaToHex } from '../format-utils';
+import { readDump } from '../dump';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Loader + identification
@@ -47,6 +48,15 @@ function buildTuningSection(effect: StatusEffect): string {
 	if (t.DecayDelay !== undefined) rows.push(['Decay Delay (s)', String(t.DecayDelay)]);
 	if (t.DecaySpeed !== undefined) rows.push(['Decay Speed (/s)', String(t.DecaySpeed)]);
 	if (rows.length === 0) return '';
+	// Shared saturation rules from `statusEffectGlobals`; only meaningful on
+	// effects that saturate (i.e. carry Tuning).
+	const g = readDump().statusEffectGlobals;
+	if (g?.SaturationAddMultiplier !== undefined)
+		rows.push(['Saturation gain per hit', `×${g.SaturationAddMultiplier} of the effect amount`]);
+	if (g?.FullSaturationDamage !== undefined)
+		rows.push(['Damage on reaching full saturation (enemies)', String(g.FullSaturationDamage)]);
+	if (g?.PlayerDamageOnTick !== undefined)
+		rows.push(['Damage per tick while fully saturated (players)', String(g.PlayerDamageOnTick)]);
 	const out = ['{| class="wikitable"', '! Tuning !! Value'];
 	for (const [label, value] of rows) {
 		out.push('|-');

@@ -285,7 +285,9 @@ const ENTITIES: Record<string, EntityLoader> = {
 	'overtime-assignment': async () =>
 		(await import('./entities/overtime-assignment')).entity as MaterializedEntity<unknown>,
 	planets: async () => (await import('./entities/planets')).entity as MaterializedEntity<unknown>,
-	events: async () => (await import('./entities/events')).entity as MaterializedEntity<unknown>
+	events: async () => (await import('./entities/events')).entity as MaterializedEntity<unknown>,
+	'game-mechanics': async () =>
+		(await import('./entities/game-mechanics')).entity as MaterializedEntity<unknown>
 };
 
 export async function getEntity(name: string): Promise<MaterializedEntity<unknown>> {

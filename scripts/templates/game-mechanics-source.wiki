@@ -1,0 +1,41 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<% if (it.hasDifficultySection) { %>
+<section begin="difficulty" />
+<%~ it.difficultySection %>
+<section end="difficulty" />
+<% } -%>
+<% if (it.hasEconomySection) { %>
+<section begin="economy" />
+<%~ it.economySection %>
+<section end="economy" />
+<% } -%>
+<% if (it.hasCombatSection) { %>
+<section begin="combat" />
+<%~ it.combatSection %>
+<section end="combat" />
+<% } -%>
+<% if (it.hasStatusSection) { %>
+<section begin="status" />
+<%~ it.statusSection %>
+<section end="status" />
+<% } -%>
+<% if (it.hasStacksSection) { %>
+<section begin="stacks" />
+<%~ it.stacksSection %>
+<section end="stacks" />
+<% } -%>
+<% if (it.hasPartWavesSection) { %>
+<section begin="partwaves" />
+<%~ it.partWavesSection %>
+<section end="partwaves" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Game Mechanics]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated game mechanics source pages]]
