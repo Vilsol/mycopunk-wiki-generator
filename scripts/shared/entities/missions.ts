@@ -516,7 +516,7 @@ export function buildMissionContext(mission: MissionEntry): Record<string, unkno
 		apiName: escapeWikiText(mission.ID),
 		missionType,
 		hasMissionTypeCategory,
-		typeName: mission.TypeName ?? mission.MissionTypeName ?? '',
+		typeName: mission.TypeName ?? '',
 		colorHex: rgbaToHex(mission.Color),
 		icon: `${displayFilename(mission)}_Icon.png`,
 		minIntensity: mission.MinIntensity ?? 0,

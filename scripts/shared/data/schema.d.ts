@@ -6,6 +6,10 @@
  */
 
 /**
+ * Copy of the sibling field (Plain<Field> ← <Field>) with Unity rich-text tags stripped. Injected by InjectPlainTextSiblings only when the source string contains tags, so it is usually absent.
+ */
+export type PlainText = string;
+/**
  * A playable character. Extends Gear with character-specific metadata (branding, voice lines, default loadout).
  */
 export type CharacterEntry = Gear & {
@@ -43,6 +47,31 @@ export type CharacterEntry = Gear & {
    */
   DefaultUpgradeType?: string;
   /**
+   * Upgrade key of the innate ability (`Character.DefaultUpgrade`); resolves in `upgrades` (which carries `DefaultUpgradeOf` back to this character).
+   */
+  DefaultUpgrade?: string;
+  /**
+   * Character-select third ability: TextBlocks key for the name. Absent when the character has no third ability.
+   */
+  ThirdAbilityNameID?: string;
+  /**
+   * Resolved third-ability name (block 0).
+   */
+  ThirdAbilityName?: string;
+  /**
+   * TextBlocks key for the third-ability description.
+   */
+  ThirdAbilityDescriptionID?: string;
+  /**
+   * Block index used for the description.
+   */
+  ThirdAbilityDescriptionIndex?: number;
+  /**
+   * Resolved third-ability description (rich-text intact).
+   */
+  ThirdAbilityDescription?: string;
+  ThirdAbilityIcon?: DIcon;
+  /**
    * C# class name of the character's default SkinUpgrade.
    */
   DefaultSkinType?: string;
@@ -59,9 +88,21 @@ export type CharacterEntry = Gear & {
    */
   SkillTree?: SkillTreeNode[];
 };
+/**
+ * ThreatModifier<PlayerModifier<float>>: one PlayerScaled per threat level (index = threat - 1, 8 entries).
+ */
+export type ThreatPlayerGrid = PlayerScaled1[];
+/**
+ * ThreatModifier<T>: index = threat level - 1 (8 entries).
+ */
+export type ThreatValues = number[];
+/**
+ * ThreatModifier<T>: index = threat level - 1 (8 entries).
+ */
+export type ThreatValues1 = number[];
 
 /**
- * JSON Schema for the dump produced by the MycopunkDumper BepInEx plugin for the Unity game Mycopunk. The dump is a static catalog of every upgrade, gear, character, resource, and directive defined in the game, extracted by walking publicized game state at runtime and serializing it via Newtonsoft.Json (with a JsonUtility shim for Unity-native types). See SCHEMA_CHANGES.md for the migration history from the legacy upgrades.json shape.
+ * JSON Schema for the dump produced by the MycopunkDumper BepInEx plugin for the Unity game Mycopunk. The dump is a static catalog of every upgrade, gear, character, resource, and directive defined in the game, extracted by walking publicized game state at runtime and serializing it via Newtonsoft.Json (with a JsonUtility shim for Unity-native types).
  */
 export interface MycopunkDumperDataJson {
   /**
@@ -136,6 +177,12 @@ export interface MycopunkDumperDataJson {
     [k: string]: Enemy;
   };
   /**
+   * Enemy part prefabs (cores, shells, legs, leg segments, arms/arm tips, attachments) referenced by `enemies[].Cores/Legs/Arms/AttachmentGroups/SpawnWithEnemy`, `economy.GlobalEnemyAttachments`, Global.GunArmLarge, and recursively by other parts (`SpawnWithChildren`, `legPartPrefab`, `tipPrefab`). Keyed by prefab name, deduplicated across enemies. All values are pre-scaling base stats: difficulty.EnemyHealthScaling[EnemyType] / EnemyDamageScaling apply on top, shell parts' maxHealth is further × enemy.ShellHealthMultiplier, leg segments' maxHealth × EnemyIKLeg.healthMultiplier × enemy.LegHealthMultiplier, and overclocked enemies' parts × overclockHealthMultiplier × GlobalOverclockHealthMultiplier (1.25).
+   */
+  enemyParts?: {
+    [k: string]: EnemyPartPrefab;
+  };
+  /**
    * Status-effect catalog (StatusEffectData ScriptableObjects), keyed by effectID (e.g. "el_fire", "el_acid", "el_decay"). Carries display metadata, color theming, and stage counts; numerical effect math (DPS, durations) is encoded on consumer code rather than the SO.
    */
   statusEffects: {
@@ -185,7 +232,7 @@ export interface MycopunkDumperDataJson {
     [k: string]: PatternPath;
   };
   /**
-   * Per-threat-level scaling curves (ThreatModifierProfile). Each profile's `Threats` array is indexed 0..6 (threat1..threat7). Used by various game systems to scale e.g. modifier chances, reward rates, and enemy stats with mission threat. Keyed by SO asset name.
+   * Per-threat-level scaling curves (ThreatModifierProfile). Each profile's `Threats` array is indexed by threat tier; `Additive` picks how the value is applied. Used by various game systems to scale e.g. modifier chances, reward rates, and enemy stats with mission threat. Keyed by SO asset name.
    */
   threatProfiles: {
     [k: string]: ThreatProfile;
@@ -275,10 +322,46 @@ export interface MycopunkDumperDataJson {
     [k: string]: GridProfileEntry;
   };
   /**
-   * Planet biome-composition arrays. Catalog source: `Resources.FindObjectsOfTypeAll<Planet>()`. Keyed by SO asset name (e.g. "New Atlas").
+   * Planet catalog (name, subtitle, unlock level, hazard flag, biome composition). Catalog source: `Resources.FindObjectsOfTypeAll<Planet>()`. Keyed by SO asset name (e.g. "New Atlas", "X11B"); raw `planet` instanceIDs carry `@ref: "planet:<key>"`.
    */
   planets?: {
     [k: string]: PlanetEntry;
+  };
+  /**
+   * In-game achievements/challenges. Catalog source: `Resources.LoadAll<Fulfillment>("")` — these are not referenced by anything loaded at startup, so `FindObjectsOfTypeAll` does not see them. Keyed by `Fulfillment.ID` (e.g. "f_bunker", "ff_grid"). Distinct from `achievements`, which is only the list of Steam achievement API IDs.
+   */
+  fulfillments?: {
+    [k: string]: FulfillmentEntry;
+  };
+  /**
+   * DLC/supporter packs from `Global.Instance.EntitlementPacks`. Keyed by SO asset name; raw instanceIDs carry `@ref: "entitlement:<key>"`. Skins gated by a pack name it in `Skin.RequiredEntitlement`.
+   */
+  entitlements?: {
+    [k: string]: Entitlement;
+  };
+  /**
+   * Pet-rock sources from `RockManager.rocks` (loaded via `Resources.Load("RockManager")`). Array index == `PetRock.SourceID`; a pet rock's look is its `Skin` preset applied with the rock's seed.
+   */
+  rocks?: Rock[];
+  difficulty?: Difficulty;
+  economy?: Economy;
+  /**
+   * Global.MissionEvents — random mid-mission events, keyed by asset name. Trigger rules are hardcoded in MissionManager (not dumped as fields): every 180 s (`MissionEventInterval`) the server rolls a 26% chance (`MissionEventChance`) to start one, only on missions with the NormalMission flag and without DisableSideObjetives/DisableEncounters; the event is picked by `Weight` and skipped if its `CanStart_Server()` fails (weather: no weather active; amalgamation: none spawned yet, not during extraction, no unfinished Amalgamation global event).
+   */
+  missionEvents?: {
+    [k: string]: MissionEvent;
+  };
+  missionGeneration?: MissionGeneration;
+  combatGlobals?: CombatGlobals;
+  /**
+   * Global.GenericPlayerStatUpgrades — the random bonus-stat pool for upgrades whose `Flags` include `ApplyStatUpgrades`. Per upgrade instance the game seeds `rand = new Random((seed + 134) * 419 - 12)`, picks ONE property uniformly (`rand.Next(count)`), then applies it to the player (Upgrade.ApplyRandomStatUpgrade, called from Player.ApplyUpgrade) and shows its StatData in the tooltip (colored #FFD58D) using the same rand, so the rolled value depends on the instance seed. Same per-property shape as upgrade `Properties`, evaluated against each character (keyed by character APIName) with seeds 0..15 and a null UpgradeInstance.
+   */
+  genericStatUpgrades?: UpgradeDProperty[];
+  /**
+   * Hazard and interactable prefabs, keyed by prefab/asset name (Unity " (n)" duplicate suffixes collapsed). Sources: Global.HornetPrefab, HardonTurret, MortarBullet, laserBullets[i] (indexed by LaserArmTip damageEffect), Explodunguses, HealCollectableLarge/SmallPrefab, GenericResourceCollectable, TossResourceCollectable, OverclockedExplosion, AntigravityField; ScrapperGear.grapplePolePrefab; plus every loaded ExplodingTarget, VolatileExplosive, DamageOnHit, AmmoCollectable, LaunchPad, SafetyBubble prefab and AcidFlyTrapData asset. Components use the same shape as `enemyParts` (Fields extraction identical). Notes: ObjectTarget subclasses (Hornet, HostileTurret, ExplodingTarget/AcidShroom/LightningShroom) carry base `maxHealth`; AcidShroom ignores `damage` and spawns Global.AcidPuddlePrefab (5 s lifetime, size = explosionRadius); LightningShroom ignores `damage` and forks combatGlobals lightning damage (range = explosionRadius, 20 hits); LaserBullet/MortarBullet damage comes from the firing enemy part; VolatileExplosive radius × EnemyManager.EnemyExplosionSizeMultiplier; ResourceCollectable `resource` is a `resources` key (Generic sets it at runtime); SafetyBubble `safetyStack`/`damageStack` are `stacks` keys. Scene-only objects: Hub (`hub`: SpeedBattery, CableCar, Ropevator, CargoElevator, MovingPiston, NetworkSpinningFan, HubCannon, SkillPointCrafter — extra `cost` array of {resource, count}) and RhomProc (`boss`: Rhombomination with core/inner/outer shell health, `playerHealthMultiplier` {Values, PerExtraPlayer}, `threatHealthMultiplier` (per threat), `timeBetweenAttacks`, and one nested object per attack (fastSpikeAttack, explosiveSpewAttack, lasersAttack, suicideDroneAttack, iceWaveAttack) holding its fields plus `Subclass` and prefab names; attack projectiles SpikeProjectile/ExplosiveRigidbody/SuicideTriangle are their own `boss` entries). Scene entries are absent if the scene fails to load within 30s.
+   */
+  worldObjects?: {
+    [k: string]: WorldObject;
   };
 }
 /**
@@ -297,6 +380,7 @@ export interface Upgrade {
    * Localized display name. May include rich-text tags (<color=...>, <link=...>).
    */
   Name: string;
+  PlainName?: PlainText;
   /**
    * Effect-element classification (Normal, Fire, Acid, Electric, etc.) — enum stringified.
    */
@@ -321,12 +405,14 @@ export interface Upgrade {
    * Localized in-game description with rich-text markup.
    */
   Description?: string;
+  PlainDescription?: PlainText;
   /**
    * Display string of a prerequisite upgrade that must be unlocked before this one. Stringified at dump time; can be cross-referenced by Name.
    */
   MustBeUnlockedFirst?: string | null;
   Pattern?: HexMap;
   Icon?: DIcon;
+  Title?: DTitle;
   Skin?: DSkin;
   /**
    * Per-property data for this upgrade. Each entry pairs a property class name (Type) with the raw Unity-serialized config (Raw) and a per-upgradable expansion of evaluated stats (StatsByUpgradable).
@@ -340,6 +426,10 @@ export interface Upgrade {
    * Secondary cost surface (e.g. crafting cost on top of the unlock cost).
    */
   AdditionalUnlockCost?: DUnlockCost[] | null;
+  /**
+   * Character APIName when this upgrade is that character's innate ability (`Character.DefaultUpgrade`, e.g. Air Dash, Wingsuit). These aren't in any upgrade grid/tree; ApplicableTo/StatsByUpgradable are evaluated against that character.
+   */
+  DefaultUpgradeOf?: string;
   /**
    * List of upgradables that can equip this upgrade. Each entry's APIName is a key into gears or characters. The Name is human-readable ("<DisplayName> (<C# class>)").
    */
@@ -420,6 +510,27 @@ export interface DIcon {
   Texture?: string;
 }
 /**
+ * `Upgrade.Title` (`TitleID`). Equipped upgrades each contribute a title fragment; the game composes the player's displayed title from the highest-priority ones. Absent on upgrades that grant no title.
+ */
+export interface DTitle {
+  /**
+   * Localization key (e.g. "t_frost"). Lookup in `localization`.
+   */
+  NameID: string;
+  /**
+   * Block 0 of the key (e.g. "Frosted").
+   */
+  Adjective?: string;
+  /**
+   * Block 1 of the key (e.g. "Glacier"). Absent for the few keys that define only one block.
+   */
+  Noun?: string;
+  /**
+   * Higher wins when several equipped upgrades grant titles.
+   */
+  Priority: number;
+}
+/**
  * Cosmetic-specific data, populated only when `UpgradeType` == `"Cosmetic"` (i.e. the upgrade is a `SkinUpgrade`). Aggregates fields scattered across `SkinUpgrade` and its `SkinUpgradeProperty` subclasses.
  */
 export interface DSkin {
@@ -444,6 +555,18 @@ export interface DSkin {
    * True when `SkinUpgrade.overridePattern` is set — the skin tree uses a non-default `HexMapProfile`. Default is `Global.Instance.SkinPattern`.
    */
   OverridesPattern?: boolean;
+  /**
+   * `SkinUpgrade.SkinType` — the cosmetic slot this skin occupies.
+   */
+  SkinType?: "Skin" | "Crab" | "Flair" | "Motion" | "None";
+  /**
+   * Key into `entitlements` — the skin is only usable while that pack is owned; absent if ungated.
+   */
+  RequiredEntitlement?: string;
+  /**
+   * Localized slot label (`skin` / `sk_crab` / `sk_flair` / `sk_anim`). Note the game substitutes "Hat" for the Crab label when the wearer is a Character — that is per-gear, so it is not reflected here.
+   */
+  SkinTypeName?: string;
   /**
    * Any VFX-spawning property is present (GunCrab-derived, VFXMod, VFXCustomProp). Skins with this flag run a `VisualEffect` that needs manual ticking when `Time.timeScale = 0`.
    */
@@ -678,10 +801,6 @@ export interface DSkinModifier {
    */
   CrabModel?: string;
   /**
-   * Upgrade key (`SkinUpgradeProperty_GunCrab.myUpgrade`). Lookup in `upgrades`.
-   */
-  CrabUpgrade?: string;
-  /**
    * SkinUpgradeProperty_GunCrab_List — pool of mesh asset names the crab variant rolls between.
    */
   CrabMeshes?: string[];
@@ -743,6 +862,52 @@ export interface DSkinModifier {
    * `thirdPersonMesh` mesh asset name.
    */
   CharacterModelThirdPerson?: string;
+  /**
+   * SkinUpgradeProperty_Hat / _MultiHat — `hatPrefab` GameObject name.
+   */
+  HatPrefab?: string;
+  /**
+   * `mesh` asset name.
+   */
+  HatMesh?: string;
+  /**
+   * SkinUpgradeProperty_MultiHat — `meshes` asset names (one per stacked hat).
+   */
+  HatMeshes?: string[];
+  /**
+   * SkinUpgradeProperty_Specular / _NegativeSpecularColor — `specularColor` as RGBA(...) (HDR).
+   */
+  SpecularColor?: string;
+  /**
+   * SkinUpgradeProperty_Specular — `shadowSpecular` value when its override is enabled.
+   */
+  SpecularShadowOverride?: number;
+  /**
+   * SkinUpgradeProperty_Reload / _SwarmGun_Reload (Motion skins) — replacement reload AnimationClip name.
+   */
+  ReloadAnimation?: string;
+  /**
+   * SkinUpgradeProperty_SwarmGun_Reload — `loop` clip name.
+   */
+  ReloadLoopAnimation?: string;
+  /**
+   * SkinUpgradeProperty_SwarmGun_Reload — `end` clip name.
+   */
+  ReloadEndAnimation?: string;
+  /**
+   * SkinUpgradeProperty_RarityColoring — probability of each rarity rolled per instance (hardcoded in the game: rand <= .52 Standard, <= .77 Rare, <= .92 Epic, else Exotic); the skin is tinted with that rarity's lightColor and named after it.
+   */
+  RarityColoringWeights?: {
+    [k: string]: number;
+  };
+  /**
+   * SkinUpgradeProperty_SequentialOverlayMats — `overlayTextures` asset names.
+   */
+  OverlayTextures?: string[];
+  /**
+   * SkinUpgradeProperty_TextureMultiple — `mainTex` name of each inner SkinUpgradeProperty_Texture.
+   */
+  TextureMains?: (string | null)[];
 }
 /**
  * One UpgradeProperty instance attached to an upgrade.
@@ -787,13 +952,39 @@ export interface UpgradeDProperty {
     [k: string]: StatData[];
   };
   /**
-   * Distinct stat `value` strings observed across 16 deterministic seeded samples of `GetStatData(...)` per upgradable. Captures the full set of outcomes for stats that roll non-deterministically — most importantly **categorical** rolls like the random element from `GetRandomEffect()` returning `{Fire, Shock, Acid}` (or `{Normal, Fire, Shock, Acid}` for `GetRandomEffectIncludingNormal()`). Outer key: upgradable APIName. Inner key: stat name (rich-text intact). Inner value: sorted array of all observed `value` strings (rich-text intact). Only stats where >1 distinct value was seen are recorded — deterministic stats are absent. Numeric stats may also appear, in which case the array shows the distribution of sampled values within the existing `minValue`/`maxValue` range (useful for distribution analysis; redundant with the range if you don't need it).
+   * Distinct stat `value` strings observed across 16 deterministic seeded samples of `GetStatData(...)` per upgradable. Captures the full set of outcomes for **categorical** rolls that have no numeric range — most importantly the random element from `GetRandomEffect()` returning `{Fire, Shock, Acid}` (or `{Normal, Fire, Shock, Acid}` for `GetRandomEffectIncludingNormal()`). Outer key: upgradable APIName. Inner key: stat name (rich-text intact). Inner value: sorted array of all observed `value` strings (rich-text intact). Only stats where >1 distinct value was seen AND the stat carries no `minValue`/`maxValue` are recorded — deterministic stats are absent, and numeric rolls are excluded because their `minValue`/`maxValue` range in `StatData` is already exhaustive (sampled values would only be a non-exhaustive subset of that range).
    */
   RolledValuesByUpgradable?: {
     [k: string]: {
       [k: string]: string[];
     };
   };
+  /**
+   * Same as `StatsByUpgradable` but evaluated on a turbocharged UpgradeInstance (seed 0). Present only for upgradables where turbocharging changes more than maxing ranged rolls (turbo sets every ranged `value` to `maxValue`, which is implied) — typically properties that only yield stats when turbocharged, or Exotics gaining the "Turbocharged" tag line.
+   */
+  StatsByUpgradableTurbocharged?: {
+    [k: string]: StatData[];
+  };
+  /**
+   * `ModifyProperties` text on a turbocharged instance, keyed by upgradable APIName; only where it differs from `ModifyTextByUpgradable`.
+   */
+  ModifyTextByUpgradableTurbocharged?: {
+    [k: string]: string;
+  };
+  /**
+   * `UpgradeProperty.GetTurbochargedInfo` — the "When turbocharged:" lines the hover popup shows before the upgrade is turbocharged (rich-text intact). Keyed by upgradable APIName.
+   */
+  TurbochargedInfoByUpgradable?: {
+    [k: string]: string;
+  };
+  /**
+   * UpgradeProperty_UpgradeFlag / _PlayerUpgradeFlag / _TurbochargeUpgradeFlag only: the enum the game reads the flag bits with — the gear's own `<Gear>UpgradeFlags` (character-tree upgrades use the character's utility gear, e.g. Glider → WingsuitUpgradeFlags), a per-character enum for PlayerUpgradeFlagField with a character, else `PlayerUpgradeFlags` (Global / Player) or `GearUpgradeFlags`.
+   */
+  FlagEnum?: string;
+  /**
+   * Set bits of the flag int resolved to member names of `FlagEnum` (bits it doesn't define fall back to the shared GearUpgradeFlags/PlayerUpgradeFlags names, e.g. TriggerReadout; a bare number if neither defines it).
+   */
+  FlagNames?: string[];
 }
 /**
  * A single labelled stat shown in the upgrade tooltip. Game type StatData from UnityEngine.JsonUtility.
@@ -831,6 +1022,10 @@ export interface StatData {
    * Optional message shown when the stat stacks.
    */
   stackMessage?: string;
+  /**
+   * Rich-text color tag wrapped around the value in the tooltip.
+   */
+  colorTag?: string;
   /**
    * Boost behavior parameters (e.g. when an upgrade is turbocharged).
    */
@@ -897,6 +1092,7 @@ export interface Gear {
    * Localized in-game description with rich-text markup.
    */
   Description?: string;
+  PlainDescription?: PlainText;
   /**
    * Category enum stringified.
    */
@@ -975,6 +1171,8 @@ export interface LevelUnlockEntry {
     | "LevelUnlock_Resource"
     | "LevelUnlock_MultipleUpgrades"
     | "LevelUnlock_UpgradeRarity"
+    | "LevelUnlock_UpgradeBoost"
+    | "LevelUnlock_Emote"
     | "LevelUnlock_SkinRarity"
     | "LevelUnlock_SeededSkin"
     | "LevelUnlock_XP"
@@ -1151,10 +1349,12 @@ export interface Resource {
    * Display name (may include rich-text tags).
    */
   Name: string;
+  PlainName?: PlainText;
   /**
    * Localized description with rich-text markup.
    */
   Description?: string;
+  PlainDescription?: PlainText;
   /**
    * Theme color as Unity RGBA(r, g, b, a) string.
    */
@@ -1210,6 +1410,7 @@ export interface Directive {
    * Resolved description (block 1 of the first property's NameID).
    */
   Description?: string;
+  PlainDescription?: PlainText;
   /**
    * Whether the directive appears in the random selection pool.
    */
@@ -1258,6 +1459,7 @@ export interface DirectivePropertyEntry {
    * Resolved description (block 1 of NameID).
    */
   Description?: string;
+  PlainDescription?: PlainText;
   /**
    * Every `TextBlocks.GetString` key referenced in this directive property's source code. See `UpgradeDProperty.LocalizationKeys` for details.
    */
@@ -1281,6 +1483,7 @@ export interface MissionEntry {
    * Public Name property — usually the localized display name.
    */
   Name?: string;
+  PlainName?: PlainText;
   /**
    * Internal _missionName field — the canonical short ID (e.g. "sat_salvage", "ouroboros").
    */
@@ -1290,13 +1493,14 @@ export interface MissionEntry {
    */
   TypeName?: string;
   /**
-   * Internal _missionTypeName field — same data via the field path.
+   * MissionCategory enum (Main/Special/Secret/Roguelike/Story) — drives TypeName.
    */
-  MissionTypeName?: string;
+  Category?: string;
   /**
    * Localized description; may be empty for auto-generated missions.
    */
   Description?: string;
+  PlainDescription?: PlainText;
   /**
    * C# class name of the concrete Mission subclass.
    */
@@ -1553,11 +1757,52 @@ export interface Region {
    */
   Color?: string;
   LockRegion?: boolean;
+  /**
+   * Lowest threat tier missions in this region roll at.
+   */
+  MinThreat?: number;
+  /**
+   * Highest threat tier missions in this region roll at (default 7).
+   */
+  MaxThreat?: number;
+  /**
+   * Region is skipped when picking weekly overtime assignments.
+   */
+  ExcludeFromOvertimeAssignment?: boolean;
+  /**
+   * Key into `planets`.
+   */
+  Planet?: string;
+  /**
+   * Keys into `missionModifiers` always applied to missions here.
+   */
+  DefaultModifiers?: string[];
   Icon?: DIcon;
   /**
    * Scenes belonging to this region.
    */
   Scenes?: SceneRef[];
+  /**
+   * WorldRegion.WorldProfiles — procedural terrain profiles for this region (textures, gradients and biome groups are not dumped).
+   */
+  WorldProfiles?: {
+    /**
+     * WorldProfile asset name.
+     */
+    Name?: string;
+    /**
+     * Localization key of the location name.
+     */
+    LocationNameID?: string;
+    /**
+     * Localized location name (TextBlocks block 0).
+     */
+    LocationName?: string | null;
+    /**
+     * Encounters this profile spawns by default; keys into `encounters`.
+     */
+    DefaultEncounters?: string[];
+  }[];
 }
 /**
  * An EnemyClass entry — a recipe for spawning a particular enemy archetype, with its body parts, behavior config, and tag flags.
@@ -1616,11 +1861,83 @@ export interface Enemy {
    * Probability of spawning legs at all (0..1).
    */
   LegChance?: number;
+  /**
+   * Slots this enemy occupies against the per-class concurrent spawn limit.
+   */
+  EnemyLimitSlots?: number;
+  /**
+   * Multiplies each spawned leg's EnemyIKLeg.healthMultiplier (leg segment health).
+   */
+  LegHealthMultiplier?: number;
+  /**
+   * If true, shell parts don't spawn their own SpawnWithChildren.
+   */
+  DontSpawnShellChildren?: boolean;
+  /**
+   * PlayerModifier<Vector2Int>: arms rolled uniformly in Min..Max (inclusive, capped by free attach points) when ArmChance passes. `Values[n-1]` for n = 1..4 players.
+   */
+  ArmCount?: {
+    Values?: MinMax[];
+    PerExtraPlayer?: number;
+  };
+  /**
+   * Weighted core prefabs (one picked per spawn), keyed by `enemyParts` name.
+   */
+  Cores?: WeightedEntry[];
+  /**
+   * Weighted leg prefabs (one pick per leg), keyed by `enemyParts` name.
+   */
+  Legs?: WeightedEntry[];
+  /**
+   * Weighted arm prefabs (one pick per arm), keyed by `enemyParts` name. Prefabs with an IArmTip are mounted on the `MountedOn` leg prefab (Global.GunArmLarge).
+   */
+  Arms?: WeightedEntry[];
+  /**
+   * Per-enemy attachment groups; Parts keyed by `enemyParts` name.
+   */
+  AttachmentGroups?: EnemyPartList[];
+  /**
+   * Prefab names instantiated on the core at spawn (cataloged in `enemyParts` when they carry enemy parts).
+   */
+  SpawnWithEnemy?: string[];
   Config?: EnemyConfig;
   /**
    * Extra rewards fired when this enemy is killed (LevelUnlockList from EnemyClass.CustomLoot). Same shape as gear LevelUnlocks. Most enemies have nothing here; bosses (e.g. Amalgamation) and special enemies (Pillabom, Missilehead) have entries.
    */
   CustomLoot?: LevelUnlockEntry[];
+}
+/**
+ * Flattened game Range<T>.
+ */
+export interface MinMax {
+  Min?: number;
+  Max?: number;
+}
+/**
+ * One Pigeon.WeightedArray node. Pick probability = Weight / sum of weights in the array.
+ */
+export interface WeightedEntry {
+  /**
+   * Dump key of the value (rarity name, enemy key, prefab name, enum name, …).
+   */
+  Key: string | null;
+  Weight: number;
+}
+/**
+ * EnemyClass.PartList — attachment group rolled per enemy spawn: if roll <= Chance and Max > 0, attaches Min..Max parts picked from Parts by weight.
+ */
+export interface EnemyPartList {
+  Chance?: number;
+  Min?: number;
+  Max?: number;
+  /**
+   * AttachMode enum stringified.
+   */
+  OverrideAttachMode?: string;
+  /**
+   * Keyed by part prefab name.
+   */
+  Parts?: WeightedEntry[];
 }
 /**
  * Per-enemy behavior tuning — the bulk of the calculator-relevant fields. Mirrors EnemyBrain+Config.
@@ -1712,6 +2029,77 @@ export interface EnemyConfig {
    */
   RegrowLimbDuration?: number;
   OnlyUseCoreHealthForHealthbar?: boolean;
+}
+/**
+ * One enemy part prefab. Values are pre-scaling (see `enemyParts`).
+ */
+export interface EnemyPartPrefab {
+  /**
+   * For IArmTip prefabs: the leg prefab (Global.GunArmLarge) the tip is spawned on when used as an arm.
+   */
+  MountedOn?: string;
+  Components?: EnemyPartComponent[];
+}
+/**
+ * A gameplay MonoBehaviour inside a part prefab: an EnemyPart subclass (EnemyCore, EnemyShell, EnemyLimbPart, GunArmTip subclasses, MissileShell, MissileArrayPart, EnemyTurret, ExplosiveEnemyPart, BarrelCore, ScrapBossCore, ErrorBossCore, AmalgamationCore, …), an EnemyIKLeg, or a Weakpoint.
+ */
+export interface EnemyPartComponent {
+  /**
+   * Child transform path relative to the prefab root ("" = root).
+   */
+  Path: string;
+  /**
+   * Concrete C# component type.
+   */
+  Subclass: string;
+  /**
+   * Unity-serialized fields (public or [SerializeField], incl. [field: SerializeField] auto-properties by property name) of the component's game-assembly type chain, plus `const`s (e.g. EnemyCore OverclockExplosionDamagePlayer/Enemy, OverclockFuseDuration; EnemyPart GlobalOverclockHealthMultiplier). Only numbers, booleans, enums (stringified), DamageData, Range (MinMax), Vector2/Vector2Int ([x, y]) and prefab references are kept; audio/VFX/shake fields are skipped. Prefab references (`legPartPrefab`, `tipPrefab`, `SpawnWithChildren`) are `enemyParts` keys. PlayerStackData refs (e.g. AntiGravFieldAttachment `antigravStack`) are `stacks` keys; PlayerResource refs are `resources` keys. Notable keys: maxHealth, overclockHealthMultiplier (EnemyPart); overclockExplosionRadius (EnemyCore); healthMultiplier, meleeDamage, meleeDamageRadius, weakpointChance, numLegParts (EnemyIKLeg); damage, fireInterval, maxFireDistance, burstSize, speed, damageEffect/effect + amount (GunArmTip subclasses); damage (DamageData), explosionSize, attackInterval (MissileShell/MissileArrayPart/EnemyTurret); minDamage/maxDamage/playerDamage, explosionRadius, fuseDuration (ExplosiveEnemyPart/BarrelCore); damageMultiplier (Weakpoint).
+   */
+  Fields?: {
+    [k: string]:
+      | (number | boolean | string)
+      | (number | string)[]
+      | MinMax
+      | DamageInfo
+      | PlayerScaled
+      | {
+          /**
+           * `resources` key.
+           */
+          resource: string;
+          count: number;
+        }[]
+      | BossAttack;
+  };
+}
+/**
+ * Flattened DamageData struct.
+ */
+export interface DamageInfo {
+  Damage?: number;
+  /**
+   * EffectType enum stringified.
+   */
+  Effect?: string;
+  EffectAmount?: number;
+  /**
+   * DamageFlags flag-enum stringified.
+   */
+  DamageFlags?: string;
+}
+/**
+ * Rhombomination `playerHealthMultiplier`.
+ */
+export interface PlayerScaled {
+  Values?: number[];
+  PerExtraPlayer?: number;
+}
+/**
+ * One Rhombomination attack config (nested Attack subclass): weight, cooldown, _maxActiveAttacks(+PerPlayer x players), plus subclass fields; prefab refs (`projectile`, `dronePrefab`, `bulletPrefab`, `explosionEffect`) are prefab names (`worldObjects` keys when they carry gameplay components).
+ */
+export interface BossAttack {
+  Subclass: string;
+  [k: string]: (number | boolean | string) | MinMax | DamageInfo;
 }
 /**
  * A status-effect element (e.g. Fire, Acid, Decay, Electric). Combat math like DPS and tick rate is implemented in code rather than declared here; this object holds the identity, theming, and stage count.
@@ -1812,6 +2200,14 @@ export interface Stack {
   TimeoutOnLevelLoad?: boolean;
   DisplayOnHUD?: boolean;
   Icon?: DIcon;
+  /**
+   * C# class name ("PlayerStackData", "AntigravStack", "HeavyStack", "WildfireStack", "JumpBoostStack").
+   */
+  Subclass?: string;
+  /**
+   * Full SO via JsonUtility. Subclass tunables: AntigravStack gravityMultiplier/gravityPowerPerStack/maxModifiedStacks/ouroborosMultiplier, HeavyStack slowAmount, WildfireStack effectAmount, JumpBoostStack baseForce/addedForcePerStack.
+   */
+  RawData?: {};
 }
 /**
  * A threat tier (ThreatData) — controls mission difficulty and per-tier reward pools. "threat1" is easiest, "threat7" hardest.
@@ -1825,6 +2221,7 @@ export interface Threat {
    * Display name ("Safe", "Brutal", …).
    */
   Name?: string;
+  PlainName?: PlainText;
   /**
    * Numbered label (e.g. "Threat Level 1").
    */
@@ -1857,10 +2254,12 @@ export interface MissionModifier {
    * Localized description.
    */
   Description?: string;
+  PlainDescription?: PlainText;
   /**
    * Combined rich-text title + description as shown in the modifier popup.
    */
   TitleAndDescription?: string;
+  PlainTitleAndDescription?: PlainText;
   /**
    * C# class name. Most are "MissionModifierGeneric"; some are wave-specific ("MissionModifierWaveModifier") or named subclasses ("MissionModifierHorde").
    */
@@ -1892,6 +2291,10 @@ export interface MissionModifier {
    * Modifier IDs this modifier is incompatible with.
    */
   IncompatibleModifiers?: number[];
+  /**
+   * Full SO via JsonUtility. Subclass fields: WaveModifier/Horde `modifier` (CustomWave @ref), Horde addedWaveInterval/addedOpenEnemySlotsToSpawnNextGroup, AmalgamationModifier spawnChance/amalgamationClass (enemy @ref), Prefab prefab/offset/exclusionRadius, Generic `action` UnityEvent (m_PersistentCalls.m_Calls[].m_MethodName names the effect, e.g. IncreaseGruntSpeed), and incompatibleLevelFlags on all.
+   */
+  RawData?: {};
 }
 /**
  * A weighted pool of upgrade keys. Drawing one upgrade at random uses `Weight` as the probability mass (sum-normalized).
@@ -1983,10 +2386,15 @@ export interface PatternPath {
 export interface ThreatProfile {
   Name: string;
   /**
-   * @minItems 7
-   * @maxItems 7
+   * One weight per threat tier, in `threats` key order (8 tiers as of 1.9).
+   *
+   * @minItems 1
    */
-  Threats: [number, number, number, number, number, number, number];
+  Threats: [number, ...number[]];
+  /**
+   * `ThreatModifierProfile.Apply(value, threat)`: true → `Clamp01(value + Threats[threat])` (chance offsets); false → `value * Threats[threat]` (multiplier).
+   */
+  Additive?: boolean;
 }
 /**
  * A wave-composition spec used by the enemy spawn system.
@@ -2025,7 +2433,38 @@ export interface CustomWave {
     Multiplier?: number;
   }[];
   AddAttachments?: boolean;
+  /**
+   * Override priority for individual enemy picks (SpecialFirstEnemyWave.enemyOverridePriority, ClassListEnemyWave.priority, PixieWave 1; 0 = none).
+   */
   OverrideIndividualEnemies?: number;
+  /**
+   * SpecialFirstEnemyWave: enemy key (into `enemies`) spawned as the wave's first enemies.
+   */
+  SpecialEnemy?: string;
+  /**
+   * SpecialFirstEnemyWave: how many of `SpecialEnemy` to spawn.
+   */
+  NumSpecialEnemies?: number;
+  /**
+   * AddAttachmentsWave: per-enemy chance to attach parts.
+   */
+  PartChance?: number;
+  PartCount?: MinMax1;
+  /**
+   * AddAttachmentsWave: weighted part prefabs, keys into `enemyParts`.
+   */
+  Parts?: WeightedEntry[];
+  /**
+   * ClassListEnemyWave: weighted enemy keys (into `enemies`).
+   */
+  Classes?: WeightedEntry[];
+}
+/**
+ * Flattened game Range<T>.
+ */
+export interface MinMax1 {
+  Min?: number;
+  Max?: number;
 }
 /**
  * A world-collectable definition. The player gathers `Count` instances to fully claim the rewards.
@@ -2124,6 +2563,19 @@ export interface GlobalEvent {
    */
   Rewards?: LevelUnlockEntry[];
   /**
+   * Only on CorpContestGlobalEvent: one entry per competing corporation.
+   */
+  CorpData?: {
+    /**
+     * Promoted weapon; key into gears.
+     */
+    WeaponID?: string;
+    /**
+     * Per-corp contest currency; key into resources.
+     */
+    TicketResource?: string;
+  }[];
+  /**
    * Full Unity-serialized event data. Subclass-specific fields (e.g. AmalgamationGlobalEvent's `missionModifier`, `modifierChance`, `maxInstanceDamage`, `maxDamageThreatMultiplier`, `HornetSwarmer`, `HornetCount`) live here. Catalog cross-references get `@ref` enrichment.
    */
   RawData?: {};
@@ -2195,6 +2647,10 @@ export interface Formulas {
     Power: number;
     Add: number;
   }[];
+  /**
+   * Global.GetMissionXP: mission-completion XP in terms of `economy`, `missions[].MissionXPMultiplier` and the mission container's GetXPMultiplier() (1 for DefaultMissionContainer).
+   */
+  MissionXP?: string;
 }
 /**
  * Per-rarity pricing/visual. Sourced from the RarityData struct array on Global.Instance.Rarities (not a ScriptableObject — fields are reflectively read).
@@ -2236,6 +2692,10 @@ export interface RarityEntry {
    * Saxonite price for "craft new" rolls at this rarity.
    */
   CraftNewSaxoniteCost?: number;
+  /**
+   * Base count N for the crafting ingredient line items at this rarity (see `crafting.ByRarity`).
+   */
+  CraftNewNormalResourceCost?: number;
   /**
    * Extra resources required beyond scrip+rare. Empty for most rarities.
    */
@@ -2359,7 +2819,7 @@ export interface QuipEntry {
  */
 export interface Crafting {
   /**
-   * Player level required to access the crafting bench (10 in source).
+   * Player level required to access the crafting bench (`CraftingWindow.MinLevelToAccessCrafting`).
    */
   MinLevelToAccessCrafting?: number;
   /**
@@ -2375,6 +2835,14 @@ export interface Crafting {
    */
   UpgradeCraftCost?: DUnlockCost[];
   /**
+   * Random roll restricted to upgrades not yet owned (template).
+   */
+  RandomNewCraftCost?: DUnlockCost[];
+  /**
+   * Gear-specific roll restricted to upgrades not yet owned (template).
+   */
+  WeaponNewCraftCost?: DUnlockCost[];
+  /**
    * Tier-up: Standard → Rare.
    */
   UpcraftToRareCost?: DUnlockCost[];
@@ -2386,6 +2854,18 @@ export interface Crafting {
    * Epic → Exotic.
    */
   UpcraftToExoticCost?: DUnlockCost[];
+  /**
+   * Resolved per-rarity costs (templates patched exactly as `CraftingWindow.SetRarity` does). Keyed by rarity name; only rarities selectable in the crafting window (standard, rare, epic, exotic).
+   */
+  ByRarity?: {
+    [k: string]: {
+      RandomCraftCost?: DUnlockCost[];
+      RandomNewCraftCost?: DUnlockCost[];
+      WeaponCraftCost?: DUnlockCost[];
+      WeaponNewCraftCost?: DUnlockCost[];
+      UpgradeCraftCost?: DUnlockCost[];
+    };
+  };
 }
 /**
  * Mission-control / crew dialogue system: the exchange catalog (id → trigger + lines + character refs) plus the per-trigger probability table.
@@ -2559,11 +3039,553 @@ export interface GridProfileEntry {
   }[];
 }
 /**
- * A Planet SO's biome composition.
+ * A Planet SO.
  */
 export interface PlanetEntry {
+  /**
+   * TextBlocks key for the name (block 0) and default subtitle (block 1).
+   */
+  NameID?: string;
+  /**
+   * Localized name.
+   */
+  Name?: string;
+  /**
+   * TextBlocks key overriding the subtitle; absent when the subtitle is block 1 of `NameID`.
+   */
+  OverrideSubtitleID?: string;
+  /**
+   * Localized subtitle, resolved as the game does.
+   */
+  Subtitle?: string;
+  Icon?: DIcon;
+  /**
+   * Player level required to travel here; 0 = never locked.
+   */
+  MinLevel?: number;
+  /**
+   * Key into `regions` — region whose daily modifier applies to this planet; absent if none.
+   */
+  DailyModifierRegion?: string;
+  IsHazardous?: boolean;
   /**
    * Raw planetBiomeData int array used by the world generator.
    */
   BiomeData?: number[];
+}
+/**
+ * One Fulfillment ScriptableObject: an in-game achievement with its own completion condition, score and optional reward. Subclass-specific fields are absent when they do not apply.
+ */
+export interface FulfillmentEntry {
+  /**
+   * Canonical ID, also the map key (e.g. "f_bunker").
+   */
+  ID: string;
+  /**
+   * C# class name of the concrete Fulfillment subclass — determines which condition fields below are present.
+   */
+  Subclass: string;
+  /**
+   * Resolved description. Absent when the localization key is missing from this build's CSV (TextBlocks echoes the key back for missing entries, which is filtered out here) or when resolving it needs live player data.
+   */
+  Description?: string;
+  PlainDescription?: PlainText;
+  /**
+   * `overrideDescription`, or `ID` when that is empty — the key `GetDescription()` resolves against.
+   */
+  DescriptionID?: string;
+  /**
+   * Fulfillment.Category enum.
+   */
+  Category: "Career" | "Mission" | "HUB" | "Gear";
+  /**
+   * Localized category label. Absent for categories whose key is missing from the CSV.
+   */
+  CategoryName?: string;
+  /**
+   * Steam achievement unlocked alongside this one; empty string for in-game-only entries. Cross-reference with `achievements`.
+   */
+  PlatformAchievementID?: string;
+  IsHidden?: boolean;
+  /**
+   * Points awarded toward the fulfillment score total.
+   */
+  Score?: number;
+  /**
+   * Target value the subclass condition compares against (kills, floors, level, completions, …).
+   */
+  CompletionThreshold?: number;
+  /**
+   * Whether `CompletionThreshold` is substituted into the description text.
+   */
+  UseThresholdAsDescParam?: boolean;
+  Reward?: LevelUnlockEntry1;
+  /**
+   * GearInfo APIName the reward applies to. Unset in the current build.
+   */
+  RewardGear?: string;
+  /**
+   * ElementalFulfillment — EffectType whose PlayerData counter is checked (Fire/Shock/Acid).
+   */
+  Element?: string;
+  /**
+   * FlagFulfillment — PlayerData flag compared against the threshold.
+   */
+  FlagName?: string;
+  /**
+   * LevelFulfillment — GearInfo APIName whose level is checked; absent means player level.
+   */
+  TargetGear?: string;
+  /**
+   * MissionFulfillment — mission ID. Lookup in `missions`.
+   */
+  Mission?: string;
+  /**
+   * MissionFulfillment — container ID. Lookup in `missionContainers`.
+   */
+  MissionContainer?: string;
+  /**
+   * MissionFulfillment — required completions.
+   */
+  CompletionCount?: number;
+  /**
+   * OuroborosFulfillment — threat floor; 0 means the threshold is a plain room count.
+   */
+  MinThreat?: number;
+  /**
+   * UpgradeFulfillment — count only discovered upgrades.
+   */
+  DiscoveredOnly?: boolean;
+  /**
+   * UpgradeFulfillment — require every matching upgrade rather than a count.
+   */
+  DiscoverAll?: boolean;
+  /**
+   * UpgradeFulfillment — RarityFlags the count is filtered to.
+   */
+  Rarities?: string;
+  CountUpgrades?: boolean;
+  CountSkins?: boolean;
+  /**
+   * EncounterFulfillment — encounter object name. Lookup in `encounters`.
+   */
+  Encounter?: string;
+}
+/**
+ * One reward entry from GearInfo.LevelUnlocks or DirectiveData.AdditionalRewards. Discriminated by Type. Fields beyond the common ones are populated based on the subclass — readers can treat absent fields as not applicable.
+ */
+export interface LevelUnlockEntry1 {
+  /**
+   * C# class name of the concrete LevelUnlock_* subclass.
+   */
+  Type:
+    | "LevelUnlock_Resource"
+    | "LevelUnlock_MultipleUpgrades"
+    | "LevelUnlock_UpgradeRarity"
+    | "LevelUnlock_UpgradeBoost"
+    | "LevelUnlock_Emote"
+    | "LevelUnlock_SkinRarity"
+    | "LevelUnlock_SeededSkin"
+    | "LevelUnlock_XP"
+    | "LevelUnlock_Upgrade"
+    | "LevelUnlock_LootPool"
+    | "LevelUnlock_Skin"
+    | "LevelUnlock_Gear"
+    | "LevelUnlock_IntroUpgrade"
+    | "LevelUnlock_Preview"
+    | "LevelUnlock_RarityReward"
+    | "LevelUnlock_Antimass"
+    | "LevelUnlock_CorpContest"
+    | "LevelUnlock_Event"
+    | "LevelUnlock_GearLevel";
+  /**
+   * Gear/directive level at which this reward is granted. For mission and directive rewards, often 0 (chance-based).
+   */
+  Level?: number;
+  /**
+   * Number of times the reward fires.
+   */
+  Count?: number;
+  /**
+   * Probability (0..1) the reward triggers; 1.0 means deterministic, 0 means deterministic-but-weighted-elsewhere.
+   */
+  Chance?: number;
+  Resource?: DUnlockCost1;
+  /**
+   * Set on LevelUnlock_MultipleUpgrades. If true, the game prefers granting upgrades the player hasn't unlocked yet.
+   */
+  PrioritizeUndiscovered?: boolean;
+  /**
+   * Set on LevelUnlock_MultipleUpgrades. List of upgrade keys (matching keys in the top-level upgrades map). The reward grants Count of them, optionally weighted by PrioritizeUndiscovered.
+   */
+  Upgrades?: string[];
+  /**
+   * Set on LevelUnlock_UpgradeRarity, LevelUnlock_SkinRarity, and LevelUnlock_RarityReward. Rarity tier of the upgrade/skin/reward granted. "None" appears for unspecified.
+   */
+  Rarity?: "Standard" | "Rare" | "Epic" | "Exotic" | "Oddity" | "Contraband" | "None";
+  /**
+   * Set on LevelUnlock_XP. Amount of player XP granted.
+   */
+  XP?: number;
+  /**
+   * Upgrade key. Set on LevelUnlock_Upgrade (specific upgrade reward) and LevelUnlock_SeededSkin (specific SkinUpgrade).
+   */
+  Upgrade?: string;
+  /**
+   * Set on LevelUnlock_LootPool. Name of the LootPool ScriptableObject from which a random reward is drawn.
+   */
+  LootPool?: string;
+  /**
+   * Set on LevelUnlock_LootPool. Minimum level for items pulled from the loot pool.
+   */
+  MinLevel?: number;
+  /**
+   * Set on LevelUnlock_Gear. Name of the gear GameObject prefab being unlocked or locked.
+   */
+  Gear?: string;
+  /**
+   * Set on LevelUnlock_Gear. true = unlock gear; false = the gear is locked at this level.
+   */
+  Unlock?: boolean;
+  /**
+   * Set on LevelUnlock_IntroUpgrade. First upgrade in the tutorial pair.
+   */
+  Upgrade1?: string;
+  /**
+   * Set on LevelUnlock_IntroUpgrade. Second upgrade in the tutorial pair.
+   */
+  Upgrade2?: string;
+  /**
+   * Set on LevelUnlock_Preview. Internal nameID being previewed (e.g. "xp").
+   */
+  Preview?: string;
+  /**
+   * Set on LevelUnlock_SeededSkin. Random seed used to roll the SkinUpgrade variant.
+   */
+  Seed?: number;
+}
+/**
+ * An `EntitlementPack` SO. On first spawn with the pack owned, the game sets `PlayerFlagTag` and unlocks every `UnlockWithPack` upgrade for all supported gear with the given seed.
+ */
+export interface Entitlement {
+  /**
+   * SO asset name (map key).
+   */
+  Name: string;
+  /**
+   * Steam DLC app id (0 = none).
+   */
+  SteamID?: number;
+  /**
+   * PlayStation product id; absent if empty.
+   */
+  PS5ID?: string;
+  AvailableOnSteam?: boolean;
+  /**
+   * PlayerData flag set the first time the pack is detected as owned; absent if empty.
+   */
+  PlayerFlagTag?: string;
+  NametagIcon?: DIcon1;
+  UnlockWithPack?: {
+    /**
+     * Key into `upgrades`.
+     */
+    Upgrade: string;
+    /**
+     * Instance seed the upgrade is unlocked with (0 = default).
+     */
+    Seed: number;
+  }[];
+}
+/**
+ * Sprite icon reference. The dump does not embed the sprite image — it stores only the texture-atlas name and source rect, so consumers must fetch the actual texture from the game install separately.
+ */
+export interface DIcon1 {
+  /**
+   * Source rect within the parent texture, in pixels: [xMin, yMin, width, height].
+   *
+   * @minItems 4
+   * @maxItems 4
+   */
+  Rect?: [number, number, number, number];
+  /**
+   * Name of the texture-atlas asset.
+   */
+  Texture?: string;
+}
+/**
+ * One `Asteroid` prefab in `RockManager.rocks`.
+ */
+export interface Rock {
+  /**
+   * Index in `RockManager.rocks` (== `PetRock.SourceID`).
+   */
+  SourceID?: number;
+  /**
+   * Asteroid prefab name.
+   */
+  Asteroid?: string;
+  /**
+   * Key into `upgradePresets`.
+   */
+  Skin?: string;
+}
+/**
+ * Global threat × player-count enemy scaling (Global.Instance DIFFICULTY block).
+ */
+export interface Difficulty {
+  /**
+   * Health multiplier keyed by EnemyType ("Grunt", "Brute", "Abomination", "Boss").
+   */
+  EnemyHealthScaling?: {
+    [k: string]: ThreatPlayerGrid;
+  };
+  EnemyDamageScaling?: ThreatPlayerGrid;
+  EnemyWaveSize?: ThreatPlayerGrid;
+  EnemyWaveInterval?: ThreatPlayerGrid;
+  EnemyMoveSpeedScaling?: ThreatValues;
+  EnemyAttackSpeedScaling?: ThreatValues;
+  LookForPartIntervalScaling?: ThreatValues;
+  /**
+   * IntensityModifier by intensity (0 low, 1 medium, 2 high). Multiplies the wave's minSpawnGroupIntervalAfterSlotsAreOpen (EnemyManager.BlendWave).
+   */
+  IntensityWaveInterval?: number[];
+  /**
+   * IntensityModifier by intensity. Multiplies minOpenEnemySlotsToSpawnNextGroup (rounded, clamped to 0..maxLivingEnemies).
+   */
+  IntensityMinOpenWaveSlots?: number[];
+  DefaultTeamReviveCount?: PlayerScaled2;
+}
+/**
+ * Flattened PlayerModifier<T>. `Values[n-1]` applies for n = 1..4 players; for n > 4 the game uses `Values[3] + PerExtraPlayer * (n - 4)` (rounded for integer modifiers).
+ */
+export interface PlayerScaled1 {
+  Values?: number[];
+  PerExtraPlayer?: number;
+}
+/**
+ * Flattened PlayerModifier<T>. `Values[n-1]` applies for n = 1..4 players; for n > 4 the game uses `Values[3] + PerExtraPlayer * (n - 4)` (rounded for integer modifiers).
+ */
+export interface PlayerScaled2 {
+  Values?: number[];
+  PerExtraPlayer?: number;
+}
+/**
+ * Global mission-reward constants, threat/intensity reward multipliers, enemy drop chances and rarity roll weights.
+ */
+export interface Economy {
+  /**
+   * See `formulas.MissionXP`.
+   */
+  BaseMissionXP?: number;
+  BaseScripForMissionCompletion?: number;
+  BaseScripForSideObjective?: number;
+  BaseXPForSideObjective?: number;
+  BaseResourcesForSideObjective?: number;
+  ResourceAmountMultiplier?: ThreatValues1;
+  /**
+   * IntensityModifier: index = intensity (0 low, 1 medium, 2 high).
+   */
+  IntensityScripAndXPMultiplier?: number[];
+  /**
+   * Chance an enemy spawns carrying an upgrade-drop part, keyed by EnemyType. EnemyClass.overrideUpgradeDropChance (>= 0) wins over this; ×0.6 while the Abomination modifier is active in Overtime. Note EnemyManager clamps the type to min(type, Brute) when rolling, so Abomination/Boss entries are effectively unused for spawns.
+   */
+  EnemyUpgradeDropChances?: {
+    [k: string]: number;
+  };
+  /**
+   * Per-spawn chance to attach the combat-resource part (levels with the SpawnCombatResource flag).
+   */
+  CombatResourceSpawnChance?: number;
+  /**
+   * Attachment groups rolled on every enemy spawn (skipped when upgrade drops are disabled for the level).
+   */
+  GlobalEnemyAttachments?: EnemyPartList[];
+  /**
+   * Upgrade rarity roll weights, keyed by rarity name (matches `rarities`).
+   */
+  RarityWeights?: WeightedEntry[];
+  /**
+   * Skin rarity roll weights, keyed by rarity name.
+   */
+  SkinRarityWeights?: WeightedEntry[];
+  /**
+   * Global.randomRewards — weighted resource drop rolled when a Brute-or-larger enemy core dies (Global.GetRandomReward). Entries with a null Resource mean no drop. Hardcoded rule checked first (non-guaranteed rolls only): with 0.4% chance, if the player owns any `strange_drop`, the reward is 1 `strange_comp` instead.
+   */
+  RandomRewards?: {
+    /**
+     * Resource ID (key into `resources`); null = no drop.
+     */
+    Resource?: string | null;
+    Count: number;
+    Weight: number;
+  }[];
+}
+/**
+ * A Global.MissionEvents entry. Subclass-specific data is flattened for WeatherMissionEvent and AmalgamationMissionEvent; others (e.g. RocketPassover) only in RawData.
+ */
+export interface MissionEvent {
+  /**
+   * Asset name (also the parent map key).
+   */
+  Name: string;
+  /**
+   * C# class of the IMissionEvent (the component's class for prefab entries).
+   */
+  Subclass?: string;
+  /**
+   * Position in Global.MissionEvents.
+   */
+  Index?: number;
+  /**
+   * Pick weight among all mission events.
+   */
+  Weight: number;
+  /**
+   * True when the entry is a GameObject carrying an IMissionEvent component.
+   */
+  IsPrefab?: boolean;
+  /**
+   * WeatherMissionEvent: weather-type weights keyed by WeatherManager.WeatherType.
+   */
+  Weather?: WeightedEntry[];
+  RainDuration?: MinMax2;
+  FogDuration?: MinMax3;
+  SulfurRainDuration?: MinMax4;
+  DebrisStormDuration?: MinMax5;
+  /**
+   * AmalgamationMissionEvent: spawned enemy key (matches `enemies`). Health ×0.45 solo, ×0.8 with 2 players.
+   */
+  AmalgamationClass?: string;
+  /**
+   * The IMissionEvent via JsonUtility.
+   */
+  RawData?: {} | null;
+}
+/**
+ * Flattened game Range<T>.
+ */
+export interface MinMax2 {
+  Min?: number;
+  Max?: number;
+}
+/**
+ * Flattened game Range<T>.
+ */
+export interface MinMax3 {
+  Min?: number;
+  Max?: number;
+}
+/**
+ * Flattened game Range<T>.
+ */
+export interface MinMax4 {
+  Min?: number;
+  Max?: number;
+}
+/**
+ * Flattened game Range<T>.
+ */
+export interface MinMax5 {
+  Min?: number;
+  Max?: number;
+}
+/**
+ * Global mission-roll parameters: how many modifiers a generated mission gets, which modifiers, and side-objective spawning.
+ */
+export interface MissionGeneration {
+  /**
+   * Mission.GetModifierCount: if a seeded roll > this, the mission has 0 modifiers.
+   */
+  MissionModifierChance?: number;
+  MissionModifierCountCurve?: CurveData;
+  /**
+   * Weighted modifier picks; keys into `missionModifiers`.
+   */
+  MissionModifiers?: WeightedEntry[];
+  /**
+   * At mission start (NormalMission, side objectives not disabled, non-procedural level) roll < this enables side content: up to 4 encounters spawn and side-objective spawning starts at 5% per 120 s check (+10% after each failed check).
+   */
+  SideObjectiveSpawnChance?: number;
+  /**
+   * Weighted side-objective prefabs; keys into `objectives`.
+   */
+  SideObjectives?: WeightedEntry[];
+}
+/**
+ * Otherwise modifier count = round(curve.Evaluate(uniform 0..1)).
+ */
+export interface CurveData {
+  PreWrapMode?: string;
+  PostWrapMode?: string;
+  Keys?: {
+    Time?: number;
+    Value?: number;
+    /**
+     * May be "Infinity" for stepped keys.
+     */
+    InTangent?: number | string;
+    OutTangent?: number | string;
+    InWeight?: number;
+    OutWeight?: number;
+    WeightedMode?: string;
+  }[];
+}
+/**
+ * Shared damage tuning on Global.Instance (lightning fork damage, overclocked core explosion falloff).
+ */
+export interface CombatGlobals {
+  LightningForkDamage?: DamageInfo1;
+  CoreExplosionDamageFalloff?: CurveData1;
+}
+/**
+ * Flattened DamageData struct.
+ */
+export interface DamageInfo1 {
+  Damage?: number;
+  /**
+   * EffectType enum stringified.
+   */
+  Effect?: string;
+  EffectAmount?: number;
+  /**
+   * DamageFlags flag-enum stringified.
+   */
+  DamageFlags?: string;
+}
+/**
+ * Overclocked core explosion falloff: player damage = 40 × curve(distance / radius); non-player targets take a flat 500 (constants hardcoded in EnemyCore / OverclockedExplosion).
+ */
+export interface CurveData1 {
+  PreWrapMode?: string;
+  PostWrapMode?: string;
+  Keys?: {
+    Time?: number;
+    Value?: number;
+    /**
+     * May be "Infinity" for stepped keys.
+     */
+    InTangent?: number | string;
+    OutTangent?: number | string;
+    InWeight?: number;
+    OutWeight?: number;
+    WeightedMode?: string;
+  }[];
+}
+/**
+ * One hazard or interactable prefab (see `worldObjects`).
+ */
+export interface WorldObject {
+  /**
+   * `hub` / `boss` entries come from scene instances (Hub, RhomProc scenes loaded additively after the main dump) rather than prefabs.
+   */
+  Category: "hazard" | "interactable" | "hub" | "boss";
+  /**
+   * Where the prefab was found: a Global field ("Global.HornetPrefab", "Global.laserBullets[2]"), "ScrapperGear.grapplePolePrefab", the component/ScriptableObject type it was discovered by, "scene:<SceneName>" for scene instances, or "Rhombomination.<attack>.<field>" for boss attack projectile prefabs.
+   */
+  Source: string;
+  /**
+   * Gameplay components: ObjectTarget subclasses, ClientCollectable subclasses (HealingCollectable healAmount/canOverheal, ResourceCollectable amount/isAmountAffectedByDifficulty, AmmoCollectable ammo), LaserBullet, RocketSalvoBullet/MortarBullet, VolatileExplosive, DamageOnHit (Min/Max(Player)Damage over Min/MaxSpeed), OverclockedExplosion, AntigravityField, LaunchPad, SafetyBubble, GrapplePole. AcidFlyTrapData is a single pseudo-component with extra `BulletScale` / `BulletExplosionSize` arrays (per-glob GlobData).
+   */
+  Components: EnemyPartComponent[];
 }
