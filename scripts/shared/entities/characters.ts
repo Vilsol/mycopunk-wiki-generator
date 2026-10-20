@@ -5,7 +5,13 @@
 import type { CharacterEntry, QuipEntry, SkillTreeNode } from '../data/schema.d';
 import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
-import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
+import {
+	escapeWikiText,
+	normalizeWikiTitle,
+	plainText,
+	sanitizeAPIName,
+	stripHtml
+} from '../wiki-text';
 import { defaultIconFileType, defineEntity, loadFromDump } from '../entity-registry';
 import {
 	loadSkins,
@@ -131,7 +137,7 @@ function buildSkillTreeSection(
 				out.push(`| (unknown upgrade ${node.Upgrade}) || || `);
 				continue;
 			}
-			const name = stripHtml(upgrade.Name);
+			const name = plainText(upgrade.Name);
 			const desc = stripHtml(upgrade.Description ?? '')
 				.replace(/\s+/g, ' ')
 				.trim();
@@ -163,7 +169,7 @@ function buildUpgradesTable(
 
 	const out = ['{| class="wikitable sortable"', '! Name !! Rarity !! Description'];
 	for (const u of upgrades) {
-		const name = stripHtml(u.Name);
+		const name = plainText(u.Name);
 		const desc = stripHtml(u.Description ?? '')
 			.replace(/\s+/g, ' ')
 			.trim();
@@ -225,7 +231,7 @@ function buildDropOnlyUpgradesTable(upgrades: GenericGunUpgrade[]): string {
 	if (upgrades.length === 0) return '';
 	const out = ['{| class="wikitable sortable"', '! Name !! Rarity !! Description'];
 	for (const u of upgrades) {
-		const name = stripHtml(u.Name);
+		const name = plainText(u.Name);
 		const desc = stripHtml(u.Description ?? '')
 			.replace(/\s+/g, ' ')
 			.trim();

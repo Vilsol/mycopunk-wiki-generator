@@ -6,6 +6,11 @@ export function stripHtml(text: string | null | undefined): string {
 	return (text ?? '').replace(/<[^>]+?>/g, '');
 }
 
+// Strips rich-text tags and undoes C#-source escapes (`Safety \"Regulations\"`).
+export function plainText(text: string | null | undefined): string {
+	return stripHtml(text).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+}
+
 // Escapes wiki-syntax metacharacters and strips HTML/Unity rich-text tags so
 // the result is safe to paste anywhere wikitext is rendered. Also unescapes
 // the `\"` / `\\` sequences some game-data names carry from C# source.

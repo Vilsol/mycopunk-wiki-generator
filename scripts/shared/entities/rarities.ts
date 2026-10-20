@@ -6,7 +6,7 @@
 import type { RarityEntry, DUnlockCost } from '../data/schema.d';
 import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
-import { escapeWikiText, stripHtml } from '../wiki-text';
+import { escapeWikiText, plainText, stripHtml } from '../wiki-text';
 import { defineEntity, lazyLoad, loadFromDump } from '../entity-registry';
 import { loadUpgrades } from './upgrades';
 import { rgbaToHex } from '../format-utils';
@@ -85,7 +85,7 @@ function buildUpgradesTable(upgrades: GenericGunUpgrade[] | undefined): string {
 	if (!upgrades || upgrades.length === 0) return '';
 	const out = ['{| class="wikitable sortable"', '! Upgrade !! Description'];
 	for (const u of upgrades) {
-		const name = stripHtml(u.Name);
+		const name = plainText(u.Name);
 		const desc = stripHtml(u.Description ?? '')
 			.replace(/\s+/g, ' ')
 			.trim();

@@ -3,7 +3,7 @@
 
 import type { LevelUnlockEntry } from './data/schema.d';
 import type { GenericGunUpgrade } from './upgrades/types';
-import { stripHtml } from './wiki-text';
+import { plainText } from './wiki-text';
 import { fmtPct } from './format-utils';
 
 export interface DescribeRewardOptions {
@@ -48,7 +48,7 @@ export function describeLevelUnlock(u: LevelUnlockEntry, opts: DescribeRewardOpt
 			if (!u.Upgrade) return '';
 			const upgrade = opts.upgradesByID?.get(String(u.Upgrade));
 			if (upgrade) {
-				const name = stripHtml(upgrade.Name);
+				const name = plainText(upgrade.Name);
 				return `${countStr}[[${name} Upgrade|${name}]]${chanceStr}`;
 			}
 			return `${countStr}Upgrade: ${u.Upgrade}${chanceStr}`;

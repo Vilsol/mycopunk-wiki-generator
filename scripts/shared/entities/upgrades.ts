@@ -16,7 +16,7 @@ import { fetchManifest, fetchVersionDump, dumpCachePath } from '../dump-cache';
 import { cachedDiff } from '../dump-diff-cache';
 import { renderChangelogSection } from '../changelog-renderer';
 import { readDump } from '../dump';
-import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, stripHtml } from '../wiki-text';
+import { escapeWikiText, normalizeWikiTitle, plainText, sanitizeAPIName } from '../wiki-text';
 import { defineEntity, lazyLoad } from '../entity-registry';
 
 type SkillTreeNodeWithChar = SkillTreeNode & { character: string };
@@ -71,14 +71,8 @@ export function mapGunName(rawName: string): string {
 	return gunMappings[stripped] ?? stripped;
 }
 
-// Names may carry C#-source escapes (`Safety \"Regulations\"`) as well as
-// rich-text tags.
-function plainUpgradeName(name: string | null | undefined): string {
-	return stripHtml(name).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-}
-
 export function upgradePageTitle(upgrade: GenericGunUpgrade): string {
-	return `${plainUpgradeName(upgrade.Name)} Upgrade`;
+	return `${plainText(upgrade.Name)} Upgrade`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -111,7 +105,7 @@ export function loadUpgradeEnrichment(): UpgradeEnrichment {
 
 	const upgradeNamesByID = new Map<string, string>();
 	for (const u of Object.values(data.upgrades ?? {}) as { ID: string; Name: string }[]) {
-		upgradeNamesByID.set(String(u.ID), plainUpgradeName(u.Name));
+		upgradeNamesByID.set(String(u.ID), plainText(u.Name));
 	}
 
 	return { authItemsByUpgradeID, skillTreeByUpgradeID, upgradeNamesByID };

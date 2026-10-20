@@ -9,6 +9,7 @@ import {
 	descriptionToWiki,
 	escapeWikiText,
 	normalizeWikiTitle,
+	plainText,
 	sanitizeAPIName,
 	stripHtml
 } from '../wiki-text';
@@ -236,7 +237,7 @@ function buildUpgradesTable(upgrades: GenericGunUpgrade[]): string {
 	if (upgrades.length === 0) return '';
 	const out = ['{| class="wikitable sortable"', '! Name !! Rarity !! Description'];
 	for (const u of upgrades) {
-		const name = stripHtml(u.Name);
+		const name = plainText(u.Name);
 		const desc = stripHtml(u.Description ?? '')
 			.replace(/\s+/g, ' ')
 			.trim();

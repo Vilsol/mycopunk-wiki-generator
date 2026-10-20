@@ -9,6 +9,7 @@ import {
 	descriptionToWiki,
 	escapeWikiText,
 	normalizeWikiTitle,
+	plainText,
 	sanitizeAPIName,
 	stripHtml
 } from '../wiki-text';
@@ -161,7 +162,7 @@ function buildUsedByUpgrades(usages: UpgradeUsage[]): string {
 	if (usages.length === 0) return '';
 	const out = ['{| class="wikitable sortable"', '! Upgrade !! Context !! Cost'];
 	for (const u of usages) {
-		const name = stripHtml(u.upgrade.Name);
+		const name = plainText(u.upgrade.Name);
 		out.push('|-');
 		out.push(`| [[${name} Upgrade|${name}]] || ${CONTEXT_LABELS[u.context]} || ${u.count}`);
 	}
