@@ -98,7 +98,9 @@ export const ENTITY_HIERARCHY = [
 	'fulfillments',
 	'mission-modifiers',
 	'mission-modifier-list',
-	'overtime-assignment'
+	'overtime-assignment',
+	'planets',
+	'events'
 ];
 
 export function titleKey(entity: string, safeFilename: string): string {

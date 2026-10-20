@@ -15,6 +15,15 @@
 <% if (it.typeName) { -%>
 |type_name=<%~ it.typeName %>
 <% } -%>
+<% if (it.category) { -%>
+|category=<%~ it.category %>
+<% } -%>
+<% if (it.planets) { -%>
+|planet=<%~ it.planets %>
+<% } -%>
+<% if (it.regions) { -%>
+|regions=<%~ it.regions %>
+<% } -%>
 <% if (it.colorHex) { -%>
 |color=<%~ it.colorHex %>
 <% } -%>
@@ -54,6 +63,18 @@
 <%~ it.rewardsSection -%>
 <section end="rewards" />
 <% } -%>
+<% if (it.hasRoomRewards) { %>
+<section begin="room-rewards" />
+<%~ it.roomRewardsSection -%>
+
+<section end="room-rewards" />
+<% } -%>
+<% if (it.hasFloorRewards) { %>
+<section begin="floor-rewards" />
+<%~ it.floorRewardsSection -%>
+
+<section end="floor-rewards" />
+<% } -%>
 <% if (it.hasRelated) { %>
 <section begin="related" />
 <%~ it.relatedSection -%>
@@ -62,6 +83,9 @@
 
 <includeonly><section begin="categories" />
 [[Category:Missions]]
+<% if (it.category) { -%>
+[[Category:<%= it.category %> Missions]]
+<% } -%>
 <% if (it.hasMissionTypeCategory) { -%>
 [[Category:<%= it.missionType %> Missions]]
 <% } -%>

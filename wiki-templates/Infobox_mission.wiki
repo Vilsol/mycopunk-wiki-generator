@@ -10,6 +10,18 @@
             <label>Type</label>
             <format><code>{{{mission_type}}}</code></format>
         </data>
+        <data source="category">
+            <label>Category</label>
+            <format>{{{category}}}</format>
+        </data>
+        <data source="planet">
+            <label>Planet</label>
+            <format>{{{planet}}}</format>
+        </data>
+        <data source="regions">
+            <label>Regions</label>
+            <format>{{{regions}}}</format>
+        </data>
         <data source="min_level">
             <label>Min Level</label>
             <format>{{{min_level}}}</format>
@@ -58,6 +70,9 @@ This template displays a mission in a Portable Infobox.
 |icon = Icon filename
 |mission_type = MissionType enum (e.g. "CleanupDetail")
 |type_name = TypeName label (e.g. "Property Reclamation")
+|category = Main | Special | Secret | Story | Roguelike
+|planet = Wikilink(s) to the planet(s) the mission is available on
+|regions = Wikilinked regions, or "All regions"
 |color = Hex color (e.g. "#FF00A4")
 |min_level = Minimum player level
 |min_intensity = Minimum intensity tier

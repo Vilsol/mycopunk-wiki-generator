@@ -1,0 +1,21 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+
+<section begin="global-events" />
+<%~ it.globalEventsSection -%>
+
+<section end="global-events" />
+
+<section begin="mission-events" />
+<%~ it.missionEventsSection -%>
+
+<section end="mission-events" />
+
+<includeonly><section begin="categories" />
+[[Category:Events]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated events source pages]]
