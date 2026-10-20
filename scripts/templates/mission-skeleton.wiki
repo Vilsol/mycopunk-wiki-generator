@@ -21,6 +21,14 @@
 == Rewards ==
 {{#lst:<%= it.pageTitle %>/source|rewards}}
 <% } -%>
+<% if (it.hasRoomRewards) { %>
+== Room rewards ==
+{{#lst:<%= it.pageTitle %>/source|room-rewards}}
+<% } -%>
+<% if (it.hasFloorRewards) { %>
+== Floor rewards ==
+{{#lst:<%= it.pageTitle %>/source|floor-rewards}}
+<% } -%>
 <% if (it.hasRelated) { %>
 == Related ==
 {{#lst:<%= it.pageTitle %>/source|related}}
