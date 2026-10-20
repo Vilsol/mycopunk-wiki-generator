@@ -460,7 +460,11 @@ export interface Upgrade {
    */
   ModGUID?: string;
   /**
-   * Resources required to turbocharge this upgrade (Upgrade.GetTurbochargeCost() result). Exotic upgrades have a flat formula (100 of each rare-fungi + 1 strange components); other rarities pull from a seeded random selection. Always populated; values vary by Rarity and NumberID seed.
+   * Whether the game allows turbocharging/boosting this upgrade, per UpgradeInstance.CanTurbocharge(): Exotic requires the CanTurbocharge flag; Standard/Rare/Epic non-skins require neither NoRandom nor CantBoost; Oddity/Contraband and skins never. Ignores the player-progression check (owning Strange Components / the `turbo` flag) on exotics. Gates `TurbochargeCost` and the per-property `*Turbocharged*` fields.
+   */
+  CanTurbocharge?: boolean;
+  /**
+   * Resources required to turbocharge (Exotic) or boost (other rarities) this upgrade (Upgrade.GetTurbochargeCost() result). Exotic upgrades have a flat formula (100 of each rare-fungi + 1 strange components); other rarities pull from a seeded random selection. Only present when `CanTurbocharge` is true.
    */
   TurbochargeCost?: DUnlockCost[];
   /**
@@ -918,7 +922,7 @@ export interface UpgradeDProperty {
    */
   Type: string;
   /**
-   * Human-readable form of `Type` — strips the `UpgradeProperty_` prefix and splits CamelCase / underscores. E.g. `UpgradeProperty_Bruiser_Cannonball` → "Bruiser Cannonball", `UpgradeProperty_AmmoCapacity` → "Ammo Capacity". Convenience field for UI display.
+   * Dev-facing label derived mechanically from the C# class name in `Type` (prefix stripped, CamelCase / underscores split; class-name typos are preserved, e.g. "Salvo Salvo Heaing"). NEVER shown in-game and not localized. For player-facing text use `StatNames` / `StatsByUpgradable[].name` and `ModifyTextLines`.
    */
   Label?: string;
   /**
@@ -960,19 +964,19 @@ export interface UpgradeDProperty {
     };
   };
   /**
-   * Same as `StatsByUpgradable` but evaluated on a turbocharged UpgradeInstance (seed 0). Present only for upgradables where turbocharging changes more than maxing ranged rolls (turbo sets every ranged `value` to `maxValue`, which is implied) — typically properties that only yield stats when turbocharged, or Exotics gaining the "Turbocharged" tag line.
+   * Same as `StatsByUpgradable` but evaluated on a turbocharged UpgradeInstance (seed 0). Present only when the upgrade's `CanTurbocharge` is true, and only for upgradables where turbocharging changes more than maxing ranged rolls (turbo sets every ranged `value` to `maxValue`, which is implied) — typically properties that only yield stats when turbocharged, or Exotics gaining the "Turbocharged" tag line.
    */
   StatsByUpgradableTurbocharged?: {
     [k: string]: StatData[];
   };
   /**
-   * `ModifyProperties` text on a turbocharged instance, keyed by upgradable APIName; only where it differs from `ModifyTextByUpgradable`.
+   * `ModifyProperties` text on a turbocharged instance, keyed by upgradable APIName; only where it differs from `ModifyTextByUpgradable`. Absent unless the upgrade's `CanTurbocharge` is true.
    */
   ModifyTextByUpgradableTurbocharged?: {
     [k: string]: string;
   };
   /**
-   * `UpgradeProperty.GetTurbochargedInfo` — the "When turbocharged:" lines the hover popup shows before the upgrade is turbocharged (rich-text intact). Keyed by upgradable APIName.
+   * `UpgradeProperty.GetTurbochargedInfo` — the "When turbocharged:" lines the hover popup shows before the upgrade is turbocharged (rich-text intact). Keyed by upgradable APIName. Absent unless the upgrade's `CanTurbocharge` is true.
    */
   TurbochargedInfoByUpgradable?: {
     [k: string]: string;
@@ -999,7 +1003,7 @@ export interface StatData {
    */
   value?: string;
   /**
-   * Lower-bound display value (when the stat rolls in a range).
+   * Lower-bound display value (when the stat rolls in a range), formatted as the in-game hold-for-details popup shows it (e.g. "+29%"); the dump forces HoverInfo.ShowExtraInfo() on, otherwise the game emits the raw float.
    */
   minValue?: string;
   /**
@@ -1047,7 +1051,7 @@ export interface DUnlockCost {
    */
   Count: number;
   /**
-   * Display name of the resource (e.g. "Saxonite"). Legacy field; matches PlayerResource.Name.
+   * Display name of the resource (e.g. "Saxonite"), with rich-text tags stripped (PlayerResource.Name may carry e.g. `<font=H>`; see `resources[ID].Name` for the raw value). Legacy field; prefer `ResourceID`.
    */
   Resource?: string;
   /**
@@ -1262,7 +1266,7 @@ export interface DUnlockCost1 {
    */
   Count: number;
   /**
-   * Display name of the resource (e.g. "Saxonite"). Legacy field; matches PlayerResource.Name.
+   * Display name of the resource (e.g. "Saxonite"), with rich-text tags stripped (PlayerResource.Name may carry e.g. `<font=H>`; see `resources[ID].Name` for the raw value). Legacy field; prefer `ResourceID`.
    */
   Resource?: string;
   /**
@@ -2661,19 +2665,19 @@ export interface RarityEntry {
    */
   Name: string;
   /**
-   * Localization key for the display name.
+   * Localized display name (RarityData.Name), e.g. "Rare".
    */
   LocalizedName?: string;
   /**
-   * Rich-text color tag prefix used when this rarity's name is rendered inline.
+   * Hex RGB (no #) of `Color`, used in rich-text color tags when this rarity's name is rendered inline (RarityData.ColorTag).
    */
   ColorTag?: string;
   /**
-   * Localization key for the "Boosted" variant label.
+   * Localized "<rarity> / Boosted" label shown on boosted non-exotic upgrades (RarityData.BoostedName).
    */
   BoostedName?: string;
   /**
-   * Localization key for the "Turbocharged" variant label.
+   * Localized "<rarity> / Turbocharged" label shown on turbocharged exotics (RarityData.TurbochargedName).
    */
   TurbochargedName?: string;
   /**
