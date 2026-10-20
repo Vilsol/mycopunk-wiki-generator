@@ -32,7 +32,7 @@ This template displays a mission threat tier in a Portable Infobox.
 |name = Display name (e.g. "Deadly")
 |api_name = Internal ID (e.g. "threat5")
 |number_label = "Threat Level N"
-|tier = Numeric tier (1–7)
+|tier = Numeric tier (1–8)
 |icon = Icon filename
 |color = Hex color (e.g. "#FF5919")
 }}

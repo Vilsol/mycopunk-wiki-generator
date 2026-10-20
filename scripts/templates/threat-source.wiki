@@ -19,6 +19,11 @@
 |color=<%~ it.colorHex %>
 <% } -%>
 }}<section end="infobox" />
+<% if (it.hasScalingSection) { %>
+<section begin="scaling" />
+<%~ it.scalingSection -%>
+<section end="scaling" />
+<% } -%>
 <% if (it.hasRewardsSection) { %>
 <section begin="rewards" />
 <%~ it.rewardsSection -%>
