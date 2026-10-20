@@ -89,6 +89,39 @@ export const getPropertyStatRows = (property: Property, upgradableAPIName?: stri
 	});
 };
 
+// Same property with its stats swapped for the turbocharged evaluation, so
+// the regular formatters (and their range spec) apply unchanged. Null when
+// turbocharging adds no stat rows to this property.
+export const getTurbochargedProperty = (property: Property): Property | null => {
+	const turbo = property.StatsByUpgradableTurbocharged;
+	if (!turbo || Object.keys(turbo).length === 0) return null;
+	return { ...property, StatsByUpgradable: turbo as unknown as Record<string, Stat[]> };
+};
+
+// Rows shown under "When turbocharged". The dump's turbocharged stat list can
+// open with the red "Turbocharged" banner (valueless) and, for mixed
+// properties, repeats the regular rows before it — only rows after the
+// banner are turbo-specific. Properties that only carry hover text (flag
+// upgrades) fall back to `TurbochargedInfoByUpgradable`.
+export const getTurbochargedRows = (property: Property, upgradableAPIName?: string): StatRow[] => {
+	const turbo = getTurbochargedProperty(property);
+	if (turbo) {
+		const rows = getPropertyStatRows(turbo, upgradableAPIName);
+		const banner = rows.findIndex((r) => !r.value && r.name?.includes('Turbocharged'));
+		const own = (banner === -1 ? rows : rows.slice(banner + 1)).map((r) =>
+			r.value ? r : { value: r.name ?? '' }
+		);
+		if (own.length > 0) return own;
+	}
+	const info = property.TurbochargedInfoByUpgradable;
+	const text =
+		info &&
+		(upgradableAPIName && info[upgradableAPIName]
+			? info[upgradableAPIName]
+			: Object.values(info)[0]);
+	return text ? [{ value: text.replace(/\s+/g, ' ').trim() }] : [];
+};
+
 export interface RGBColor {
 	r: number;
 	g: number;

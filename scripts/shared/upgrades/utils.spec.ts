@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { getPropertyStats, getStatsFromProperty } from './utils';
+import { getPropertyStats, getStatsFromProperty, getTurbochargedProperty } from './utils';
 import { loadUpgrades } from '../entities/upgrades';
 
 const upgradesData = loadUpgrades();
@@ -20,9 +20,12 @@ describe('getStatsFromProperty', () => {
 				continue;
 			}
 
-			const testableProperties = upgrade.Properties.filter(
-				(property) => getPropertyStats(property).length > 0
-			);
+			// Each property is checked as-is and, where the dump carries one,
+			// against its turbocharged stat evaluation.
+			const testableProperties = upgrade.Properties.flatMap((property) => {
+				const turbo = getTurbochargedProperty(property);
+				return turbo ? [property, turbo] : [property];
+			}).filter((property) => getPropertyStats(property).length > 0);
 			if (testableProperties.length === 0) {
 				continue;
 			}
@@ -31,7 +34,8 @@ describe('getStatsFromProperty', () => {
 				for (const property of testableProperties) {
 					const propertyStats = getPropertyStats(property);
 
-					it(`${property.Type}`, () => {
+					const isTurbo = property.StatsByUpgradable === property.StatsByUpgradableTurbocharged;
+					it(`${property.Type}${isTurbo ? ' (turbocharged)' : ''}`, () => {
 						const stats = getStatsFromProperty(property, true);
 						if (!stats || stats.length === 0) {
 							return;
