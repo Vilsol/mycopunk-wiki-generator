@@ -92,7 +92,8 @@ export const ENTITY_HIERARCHY = [
 	'resources',
 	'rarities',
 	'status-effects',
-	'upgrade-presets'
+	'upgrade-presets',
+	'game-mechanics'
 ];
 
 export function titleKey(entity: string, safeFilename: string): string {

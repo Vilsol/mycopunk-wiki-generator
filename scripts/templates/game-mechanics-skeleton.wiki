@@ -1,0 +1,35 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+
+''To be written.''
+<% if (it.hasDifficultySection) { %>
+== Difficulty Scaling ==
+Enemy stats and spawn behaviour scale with the mission's threat level and the number of players.
+
+{{#lst:<%= it.pageTitle %>/source|difficulty}}
+<% } -%>
+<% if (it.hasEconomySection) { %>
+== Economy ==
+{{#lst:<%= it.pageTitle %>/source|economy}}
+<% } -%>
+<% if (it.hasCombatSection) { %>
+== Combat ==
+{{#lst:<%= it.pageTitle %>/source|combat}}
+<% } -%>
+<% if (it.hasStatusSection) { %>
+== Status Effects ==
+{{#lst:<%= it.pageTitle %>/source|status}}
+<% } -%>
+<% if (it.hasStacksSection) { %>
+== Buff Stacks ==
+Stacking player buffs and debuffs, such as weapon upgrade effects.
+
+{{#lst:<%= it.pageTitle %>/source|stacks}}
+<% } -%>
+<% if (it.hasPartWavesSection) { %>
+== Enemy Part Waves ==
+Special waves whose enemies may spawn with extra attached parts.
+
+{{#lst:<%= it.pageTitle %>/source|partwaves}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}
