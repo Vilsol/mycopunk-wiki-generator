@@ -165,7 +165,7 @@ function buildAcquisitionSection(
 	}
 
 	const ouro = formatCostLine(upgrade.OuroborosCost);
-	const turbo = formatCostLine(upgrade.TurbochargeCost);
+	const turbo = upgrade.CanTurbocharge ? formatCostLine(upgrade.TurbochargeCost) : '';
 	if (ouro || turbo) {
 		lines.push('');
 		lines.push("'''Costs:'''");
@@ -198,7 +198,7 @@ function genericBonusStatsLine(upgrade: GenericGunUpgrade): string {
 		.genericStatUpgrades;
 	const entries = (pool ?? []).flatMap((p) =>
 		getPropertyStatRows(p).map(
-			(r) => `${convertCode(r.name ?? p.Label ?? '')} ${convertCode(r.value)}`
+			(r) => `${convertCode(r.name ?? p.StatNames?.[0] ?? '')} ${convertCode(r.value)}`
 		)
 	);
 	if (entries.length === 0) return '';
@@ -214,7 +214,9 @@ function generatePropertiesSection(upgrade: GenericGunUpgrade): string {
 	const allRows = visibleProperties.flatMap((p) => getPropertyStatRows(p));
 	if (allRows.length > 0) blocks.push(renderStatTable(allRows));
 
-	const turboRows = (upgrade.Properties ?? []).flatMap((p) => getTurbochargedRows(p));
+	const turboRows = upgrade.CanTurbocharge
+		? (upgrade.Properties ?? []).flatMap((p) => getTurbochargedRows(p))
+		: [];
 	if (turboRows.length > 0) {
 		blocks.push(`'''When turbocharged:'''\n${renderStatTable(turboRows)}`);
 	}
