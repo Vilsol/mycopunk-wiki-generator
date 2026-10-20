@@ -1,0 +1,20 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+{{#lst:<%= it.pageTitle %>/source|infobox}}
+<% if (it.description) { %>
+{{#lst:<%= it.pageTitle %>/source|description}}
+<% } else { -%>
+''To be written.''
+<% } -%>
+<% if (it.hasIncompatible) { %>
+== Incompatibilities ==
+{{#lst:<%= it.pageTitle %>/source|incompatibilities}}
+<% } -%>
+
+== Where it appears ==
+{{#lst:<%= it.pageTitle %>/source|appears}}
+<% if (it.hasVariants) { %>
+== Variants ==
+{{#lst:<%= it.pageTitle %>/source|variants}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}
