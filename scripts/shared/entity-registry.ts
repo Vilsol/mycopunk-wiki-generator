@@ -270,6 +270,8 @@ const ENTITIES: Record<string, EntityLoader> = {
 		(await import('./entities/characters')).entity as MaterializedEntity<unknown>,
 	missions: async () => (await import('./entities/missions')).entity as MaterializedEntity<unknown>,
 	skins: async () => (await import('./entities/skins')).entity as MaterializedEntity<unknown>,
+	entitlements: async () =>
+		(await import('./entities/entitlements')).entity as MaterializedEntity<unknown>,
 	'upgrade-presets': async () =>
 		(await import('./entities/upgrade-presets')).entity as MaterializedEntity<unknown>
 };

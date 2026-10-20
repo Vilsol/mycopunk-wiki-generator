@@ -15,6 +15,7 @@ import { defineEntity } from '../entity-registry';
 import { presetPageTitle } from './upgrade-presets';
 import { loadGears, gearPageTitle } from './gears';
 import { loadCharacters, characterPageTitle } from './characters';
+import { entitlementDisplayName } from './entitlements';
 import { fmtPct, rgbaToHex } from '../format-utils';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -404,6 +405,7 @@ export function buildSkinContext(s: Skin): Record<string, unknown> {
 	const variantCount = previewSlugs.length;
 
 	const description = descriptionToWiki(u.Description);
+	const requiredPack = s.skin.RequiredEntitlement;
 
 	return {
 		name: escapeWikiText(name),
@@ -414,6 +416,8 @@ export function buildSkinContext(s: Skin): Record<string, unknown> {
 		parentCount: s.parents.length,
 		isUniversal: s.parents.length > 1,
 		rarity: u.Rarity ?? '',
+		skinType: s.skin.SkinTypeName ?? '',
+		requiredPack: requiredPack ? entitlementDisplayName(requiredPack) : '',
 		colorHex: rgbaToHex(u.Color),
 		baseSkin: s.skin.BaseSkin ? escapeWikiText(s.skin.BaseSkin) : '',
 		flags: flagChips(s.skin),

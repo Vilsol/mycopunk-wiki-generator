@@ -23,6 +23,14 @@
             <label>Base Skin</label>
             <format><code>{{{base_skin}}}</code></format>
         </data>
+        <data source="skin_type">
+            <label>Type</label>
+            <format>{{{skin_type}}}</format>
+        </data>
+        <data source="requires">
+            <label>Requires</label>
+            <format>{{{requires}}}</format>
+        </data>
         <data source="color">
             <label>Color</label>
             <format><span style="display:inline-block;width:14px;height:14px;background:{{{color}}};border:1px solid #444;vertical-align:middle;"></span> <code>{{{color}}}</code></format>
@@ -51,6 +59,8 @@ This template displays a skin (cosmetic upgrade) in a Portable Infobox.
 |dump_id = Stable upgrade ID
 |parents = Wikilinks to parent gear/character (e.g. [[Scrapper]])
 |rarity = Standard | Rare | Epic | Exotic | Contraband | Oddity
+|skin_type = Skin | Crab | Flair | Motion
+|requires = Optional DLC pack wikilink (e.g. [[Supporter Pack]])
 |color = Optional theme color (hex)
 |base_skin = Optional parent-skin upgrade key inherited from
 |flags = Comma-separated capability flags (VFX, Crab, Custom Model, …)

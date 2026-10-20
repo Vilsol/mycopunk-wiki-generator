@@ -1,0 +1,23 @@
+<onlyinclude><templatestyles src="Infobox_dlc_pack/styles.css" /><infobox theme="dlc-pack-infobox">
+    <title source="name">
+        <format><center>'''{{{name}}}'''</format>
+    </title>
+    <panel>
+        <data source="platforms">
+            <label>Platforms</label>
+            <format>{{{platforms}}}</format>
+        </data>
+        <data source="steam_id">
+            <label>Steam App ID</label>
+            <format><code>{{{steam_id}}}</code></format>
+        </data>
+        <data source="skin_count">
+            <label>Cosmetics</label>
+            <format>{{{skin_count}}}</format>
+        </data>
+    </panel>
+</infobox></onlyinclude>
+==Documentation==
+Infobox for a DLC pack page (e.g. Supporter Pack).
+
+[[Category:Templates]]
