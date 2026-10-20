@@ -14,6 +14,7 @@ import {
 	regionName,
 	type PlanetWithKey
 } from '../load-world';
+import { getModifiersByID, modifierLink } from './mission-modifiers';
 import { loadMissions, missionPageTitle, isPlaceholderName } from './missions';
 import type { MissionEntry } from './missions';
 
@@ -39,15 +40,6 @@ export function planetPageTitle(planet: PlanetWithKey): string {
 
 const CATEGORY_ORDER = ['Main', 'Special', 'Story', 'Roguelike', 'Secret'];
 
-const getMissionModifierNames = lazyLoad(() => {
-	const data = readDump() as unknown as {
-		missionModifiers?: Record<string, { Name?: string }>;
-	};
-	return new Map(
-		Object.entries(data.missionModifiers ?? {}).map(([k, m]) => [k, plainText(m.Name).trim()])
-	);
-});
-
 function threatRange(region: Region): string {
 	const min = region.MinThreat ?? 0;
 	const max = region.MaxThreat ?? 7;
@@ -67,12 +59,12 @@ function buildRegionBlock(region: Region): string {
 		out.push(`* Locations: ${[...new Set(locations)].map(escapeWikiText).join(', ')}`);
 	}
 
-	const modifierNames = getMissionModifierNames();
+	const modifiersByID = getModifiersByID();
 	const modifiers = (region.DefaultModifiers ?? [])
-		.map((key) => modifierNames.get(key))
-		.filter((n): n is string => !!n);
+		.map((key) => modifiersByID.get(Number(key)))
+		.filter((m): m is NonNullable<typeof m> => !!m);
 	if (modifiers.length > 0) {
-		out.push(`* Default modifiers: ${modifiers.map((n) => `[[${n}]]`).join(', ')}`);
+		out.push(`* Default modifiers: ${modifiers.map(modifierLink).join(', ')}`);
 	}
 	if (region.ExcludeFromOvertimeAssignment) {
 		out.push('* Not used for weekly overtime assignments');
