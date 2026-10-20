@@ -2,7 +2,7 @@
 // compatible-upgrade inversion, stat extraction from `RawData.gunData`,
 // registry definition.
 
-import type { Gear } from '../data/schema.d';
+import type { Directive, Gear } from '../data/schema.d';
 import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
 import {
@@ -25,6 +25,8 @@ import {
 import { fmtNum } from '../format-utils';
 import { buildLevelUnlocksTable } from '../reward-utils';
 import { rarityCell } from '../rarity-display';
+import { loadPatternInfusion } from './crafting';
+import { directivePageTitle } from './directives';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Loader + identification
@@ -112,6 +114,19 @@ interface GunDataLike {
 	reloadDuration?: number;
 	maxBounces?: number;
 	hitVFXSize?: number;
+	ammoCollectMultiplier?: number;
+	ammoGenerationEfficiency?: number;
+	firstShotSpreadMultiplier?: number;
+	fireConstraints?: {
+		canFireWhileJumping?: boolean;
+		canFireWhileAirJumping?: boolean;
+		canFireWhileSliding?: number;
+		canAimWhileSliding?: number;
+		canAimWhileReloading?: boolean;
+		canReloadWhileJumping?: boolean;
+		canReloadWhileAirJumping?: boolean;
+		canReloadWhileSliding?: number;
+	};
 	rangeData?: {
 		falloffStartDistance?: number;
 		falloffEndDistance?: number;
@@ -126,9 +141,19 @@ interface GunDataLike {
 	chargeData?: { duration?: number };
 }
 
+interface GearRawData {
+	gunData?: GunDataLike;
+	cooldownData?: { rechargeDuration?: number; maxCharges?: number };
+	acceleratorData?: { maxBurstSize?: number; burstSizeIncrease?: number };
+	unlockDirectiveData?: { '@ref'?: string };
+}
+
+function getRawData(gear: Gear): GearRawData | undefined {
+	return gear.RawData as GearRawData | undefined;
+}
+
 function getGunData(gear: Gear): GunDataLike | null {
-	const raw = gear.RawData as { gunData?: GunDataLike } | undefined;
-	return raw?.gunData ?? null;
+	return getRawData(gear)?.gunData ?? null;
 }
 
 interface StatRow {
@@ -212,13 +237,79 @@ function extractGunStatRows(gd: GunDataLike): StatRow[] {
 		}
 	}
 
+	if (gd.ammoCollectMultiplier !== undefined && gd.ammoCollectMultiplier !== 1)
+		rows.push({ label: 'Ammo Pickup Multiplier', value: fmtNum(gd.ammoCollectMultiplier, 2) });
+	if (gd.ammoGenerationEfficiency)
+		rows.push({
+			label: 'Ammo Generation Efficiency',
+			value: fmtNum(gd.ammoGenerationEfficiency, 2)
+		});
+	if (gd.firstShotSpreadMultiplier !== undefined && gd.firstShotSpreadMultiplier !== 1)
+		rows.push({
+			label: 'First Shot Spread Multiplier',
+			value: fmtNum(gd.firstShotSpreadMultiplier, 2)
+		});
+
+	const restrictions = extractFireRestrictions(gd.fireConstraints);
+	if (restrictions.length > 0)
+		rows.push({ label: 'Firing Restrictions', value: restrictions.join(', ') });
+
 	return rows;
+}
+
+// Only listed when a gear deviates from the common rules (jump/slide fire and
+// reload allowed, no aiming while sliding or reloading).
+function extractFireRestrictions(fc: GunDataLike['fireConstraints']): string[] {
+	if (!fc) return [];
+	const out: string[] = [];
+	if (fc.canFireWhileJumping === false) out.push('cannot fire while jumping');
+	if (fc.canFireWhileAirJumping === false) out.push('cannot fire while air jumping');
+	if (fc.canFireWhileSliding === 0) out.push('cannot fire while sliding');
+	if (fc.canReloadWhileJumping === false) out.push('cannot reload while jumping');
+	if (fc.canReloadWhileAirJumping === false) out.push('cannot reload while air jumping');
+	if (fc.canReloadWhileSliding === 0) out.push('cannot reload while sliding');
+	if (fc.canAimWhileSliding) out.push('can aim while sliding');
+	if (fc.canAimWhileReloading) out.push('can aim while reloading');
+	return out;
+}
+
+function extractGearSpecificRows(gear: Gear): StatRow[] {
+	const raw = getRawData(gear);
+	const rows: StatRow[] = [];
+	const acc = raw?.acceleratorData;
+	if (acc?.maxBurstSize) rows.push({ label: 'Max Burst Size', value: fmtNum(acc.maxBurstSize) });
+	if (acc?.burstSizeIncrease)
+		rows.push({ label: 'Burst Size Increase', value: fmtNum(acc.burstSizeIncrease) });
+
+	const cd = raw?.cooldownData;
+	if (cd?.rechargeDuration)
+		rows.push({ label: 'Recharge Duration (s)', value: fmtNum(cd.rechargeDuration, 1) });
+	if (cd?.maxCharges && cd.maxCharges > 1)
+		rows.push({ label: 'Max Charges', value: fmtNum(cd.maxCharges) });
+
+	const directiveId = raw?.unlockDirectiveData?.['@ref']?.replace(/^directive:/, '');
+	const directive = directiveId
+		? Object.values(
+				(readDump() as unknown as { directives?: Record<string, Directive> }).directives ?? {}
+			).find((d) => String(d.ID) === directiveId)
+		: undefined;
+	if (directive?.Name)
+		rows.push({
+			label: 'Unlock Directive',
+			value: `[[${directivePageTitle(directive)}|${escapeWikiText(directive.Name)}]]`
+		});
+	return rows;
+}
+
+function buildInfusionSection(gear: Gear): string {
+	const p = loadPatternInfusion();
+	if (!gear.HasUpgradeGrid || !p?.UnlockLevel) return '';
+	return `Upgrade patterns on this gear can be infused once you reach player level ${p.UnlockLevel}. See [[Crafting#Pattern Infusion|Pattern infusion]] for costs.`;
 }
 
 function buildStatsTable(gear: Gear): string {
 	const gd = getGunData(gear);
-	if (!gd) return '';
-	const rows = extractGunStatRows(gd);
+	const rows = [...(gd ? extractGunStatRows(gd) : []), ...extractGearSpecificRows(gear)];
 	if (rows.length === 0) return '';
 	const out = ['{| class="wikitable"', '! Stat !! Value'];
 	for (const r of rows) {
@@ -332,6 +423,7 @@ export function buildGearContext(gear: Gear): Record<string, unknown> {
 		maxLevel: gear.MaxLevel ?? 0,
 		hasGunData: gd !== null,
 		statsSection: buildStatsTable(gear),
+		infusionSection: buildInfusionSection(gear),
 		unlocksSection: buildLevelUnlocksTable(gear.LevelUnlocks, { includeChance: false }),
 		upgradesSection: buildUpgradesTable(compatibleUpgrades),
 		skinsSection: buildSkinsTable(compatibleSkins, gear.APIName),
@@ -392,6 +484,7 @@ export const entity = defineEntity<Gear>({
 		autoGenSections: [
 			'stats',
 			'statistics',
+			'pattern infusion',
 			'level unlocks',
 			'unlocks',
 			'upgrades',
