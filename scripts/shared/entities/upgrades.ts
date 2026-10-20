@@ -242,13 +242,13 @@ function plainDescription(raw: string | undefined | null): string {
 }
 
 // The title fragment equipping this upgrade can contribute, e.g.
-// "Medical / Medic (priority 5)"; null when it grants none.
+// "Medical / Medic" (adjective / noun); null when it grants none.
 function upgradeTitle(upgrade: GenericGunUpgrade): string | null {
 	const t = upgrade.Title;
 	if (!t) return null;
 	const parts = [t.Adjective, t.Noun].map((x) => escapeWikiText(plainText(x))).filter(Boolean);
 	if (parts.length === 0) return null;
-	return `${parts.join(' / ')} (priority ${t.Priority})`;
+	return parts.join(' / ');
 }
 
 function humanizeUpgradeType(t: string): string | null {
