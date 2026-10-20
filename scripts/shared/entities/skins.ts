@@ -8,6 +8,7 @@ import {
 	descriptionToWiki,
 	escapeWikiText,
 	normalizeWikiTitle,
+	plainText,
 	sanitizeAPIName,
 	stripHtml
 } from '../wiki-text';
@@ -16,6 +17,7 @@ import { presetPageTitle } from './upgrade-presets';
 import { loadGears, gearPageTitle } from './gears';
 import { loadCharacters, characterPageTitle } from './characters';
 import { entitlementDisplayName } from './entitlements';
+import { fulfillmentsPageTitle, loadFulfillmentRewardsByUpgrade } from './fulfillments';
 import { fmtPct, rgbaToHex } from '../format-utils';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -404,7 +406,13 @@ export function buildSkinContext(s: Skin): Record<string, unknown> {
 	const previewSlugs = Object.values(s.skin.Previews ?? {}).flatMap((m) => Object.keys(m));
 	const variantCount = previewSlugs.length;
 
-	const description = descriptionToWiki(u.Description);
+	const rewardLines = (loadFulfillmentRewardsByUpgrade().get(String(u.ID)) ?? []).map(
+		(f) =>
+			`Reward for completing a [[${fulfillmentsPageTitle()}|fulfillment]]: ${escapeWikiText(plainText(f.Description))}`
+	);
+	const description = [descriptionToWiki(u.Description), ...rewardLines]
+		.filter((l) => l)
+		.join('\n\n');
 	const requiredPack = s.skin.RequiredEntitlement;
 
 	return {

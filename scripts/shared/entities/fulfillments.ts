@@ -3,6 +3,7 @@
 // category. Wrapped in a one-element array so it plugs into the per-entity
 // pipeline without special-casing.
 
+import { PAGE_TITLE as OVERTIME_PAGE_TITLE } from './overtime-assignment';
 import type { FulfillmentEntry, LevelUnlockEntry1 } from '../data/schema.d';
 import { readDump } from '../dump';
 import { escapeWikiText, plainText } from '../wiki-text';
@@ -116,6 +117,7 @@ function renderTarget(f: FulfillmentEntry): string {
 	if (f.Mission && f.Mission !== '??') {
 		parts.push(links.get(`mission:${f.Mission}`) ?? escapeWikiText(f.Mission));
 	}
+	if (f.MissionContainer === 'weeklyovertime') parts.push(`[[${OVERTIME_PAGE_TITLE}]]`);
 	return parts.join(', ');
 }
 

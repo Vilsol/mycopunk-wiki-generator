@@ -3,9 +3,8 @@
 // threat range and a handful of flags) and its missions are a table.
 
 import type { Region } from '../data/schema.d';
-import { readDump } from '../dump';
 import { escapeWikiText, normalizeWikiTitle, sanitizeAPIName, plainText } from '../wiki-text';
-import { defineEntity, lazyLoad } from '../entity-registry';
+import { defineEntity } from '../entity-registry';
 import {
 	loadPlanets,
 	loadRegions,

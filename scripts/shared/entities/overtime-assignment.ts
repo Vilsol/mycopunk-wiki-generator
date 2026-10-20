@@ -18,7 +18,7 @@ interface OvertimeItem {
 	title: string;
 }
 
-const PAGE_TITLE = 'Overtime Assignment';
+export const PAGE_TITLE = 'Overtime Assignment';
 const RARITIES = ['Standard', 'Rare', 'Epic', 'Exotic', 'Oddity', 'Contraband'];
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
