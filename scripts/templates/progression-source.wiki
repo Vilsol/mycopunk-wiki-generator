@@ -1,0 +1,32 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+
+<section begin="level_unlocks" />
+<%~ it.milestonesSection -%>
+<section end="level_unlocks" />
+
+<section begin="xp_curves" />
+<%~ it.curvesSection -%>
+<section end="xp_curves" />
+
+<section begin="xp_table" />
+<%~ it.xpSection -%>
+<section end="xp_table" />
+<% if (it.missionXP) { %>
+<section begin="mission_xp" />
+<code><%~ it.missionXP %></code>
+<section end="mission_xp" />
+<% } -%>
+
+<section begin="grid" />
+<%~ it.gridSection -%>
+<section end="grid" />
+
+<includeonly><section begin="categories" />
+[[Category:Progression]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated progression source pages]]

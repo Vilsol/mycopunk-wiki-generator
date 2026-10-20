@@ -84,8 +84,8 @@ mise run release                     # regenerate every entity
 mise run release:upload              # push (classifier flags curator pages)
 
 # Per-entity (substitute <entity>: upgrades, gears, characters, missions,
-# enemies, threats, collectables, rarities, crafting, directives, skins,
-# upgrade-presets, status-effects, resources)
+# enemies, threats, collectables, rarities, crafting, progression,
+# directives, skins, upgrade-presets, status-effects, resources)
 mise run release:<entity>
 mise run release:upload-<entity>
 

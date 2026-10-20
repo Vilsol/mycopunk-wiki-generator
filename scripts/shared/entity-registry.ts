@@ -261,6 +261,8 @@ const ENTITIES: Record<string, EntityLoader> = {
 	resources: async () =>
 		(await import('./entities/resources')).entity as MaterializedEntity<unknown>,
 	crafting: async () => (await import('./entities/crafting')).entity as MaterializedEntity<unknown>,
+	progression: async () =>
+		(await import('./entities/progression')).entity as MaterializedEntity<unknown>,
 	directives: async () =>
 		(await import('./entities/directives')).entity as MaterializedEntity<unknown>,
 	enemies: async () => (await import('./entities/enemies')).entity as MaterializedEntity<unknown>,

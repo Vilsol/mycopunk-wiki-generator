@@ -89,6 +89,7 @@ export const ENTITY_HIERARCHY = [
 	'directives',
 	'collectables',
 	'crafting',
+	'progression',
 	'resources',
 	'rarities',
 	'status-effects',

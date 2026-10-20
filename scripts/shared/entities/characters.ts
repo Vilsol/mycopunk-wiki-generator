@@ -2,10 +2,11 @@
 // resolution from `playerUpgrades`, inverted upgrades-by-character index,
 // default emotes, registry definition.
 
-import type { CharacterEntry, QuipEntry, SkillTreeNode } from '../data/schema.d';
+import type { CharacterEntry, DialogueEntry, QuipEntry, SkillTreeNode } from '../data/schema.d';
 import type { GenericGunUpgrade } from '../upgrades/types';
 import { readDump } from '../dump';
 import {
+	descriptionToWiki,
 	escapeWikiText,
 	normalizeWikiTitle,
 	plainText,
@@ -20,6 +21,8 @@ import {
 	variantPreviewFilename,
 	type Skin
 } from './skins';
+import { upgradePageTitle } from './upgrades';
+import { buildGridGrowthTable, loadDefaultGridProfile } from './progression';
 import { layoutSkillTree } from '../character-skill-tree';
 import { rarityCell } from '../rarity-display';
 export { layoutSkillTree } from '../character-skill-tree';
@@ -406,6 +409,97 @@ function resolveDefaultAbility(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Innate abilities: the `DefaultUpgrade` (linked to its upgrade page) and,
+// where present, the character's third ability.
+// ─────────────────────────────────────────────────────────────────────────
+
+function buildInnateAbilitiesSection(
+	c: CharacterEntry,
+	upgradesByID: Map<string, GenericGunUpgrade>
+): string {
+	const out = ['{| class="wikitable"', '! Ability !! Description'];
+	const def = c.DefaultUpgrade ? upgradesByID.get(String(c.DefaultUpgrade)) : undefined;
+	if (def) {
+		const desc = stripHtml(def.Description ?? '')
+			.replace(/\s+/g, ' ')
+			.trim();
+		out.push('|-');
+		out.push(`| [[${upgradePageTitle(def)}|${plainText(def.Name)}]] || ${desc}`);
+	}
+	if (c.ThirdAbilityName) {
+		out.push('|-');
+		out.push(
+			`| '''${escapeWikiText(c.ThirdAbilityName)}''' || ${descriptionToWiki(c.ThirdAbilityDescription)}`
+		);
+	}
+	if (out.length === 2) return '';
+	out.push('|}');
+	return out.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Banter: exchanges from `dialogue.Exchanges` in which the character speaks.
+// Lines with no Character are Roachard (mission control).
+// ─────────────────────────────────────────────────────────────────────────
+
+const TRIGGER_LABELS: Record<string, string> = {
+	Ambient: 'Ambient',
+	None: 'Ambient',
+	KilledByPlayer: 'On kill',
+	DropPodFalling: 'Drop pod descent',
+	DropPodLand: 'Drop pod landing',
+	DropPodLaunch: 'Drop pod launch'
+};
+
+function loadDialogueExchanges(): DialogueEntry[] {
+	const data = readDump() as unknown as {
+		dialogue?: { Exchanges?: Record<string, DialogueEntry> };
+	};
+	return Object.values(data.dialogue?.Exchanges ?? {}).sort((a, b) => a.ID.localeCompare(b.ID));
+}
+
+// Flag-enum fields use "-1"/"0"/"None" for "no restriction".
+function exchangeContext(e: DialogueEntry): string {
+	const trigger = (e.Trigger ?? '')
+		.split(',')
+		.map((t) => TRIGGER_LABELS[t.trim()] ?? t.trim())
+		.filter((t, i, a) => t && a.indexOf(t) === i)
+		.join(', ');
+	const restrict = (v: string | undefined) => (!v || ['-1', '0', 'None'].includes(v) ? '' : v);
+	const where = [
+		...new Set([restrict(e.LevelTypes), restrict(e.ValidRegions)].filter(Boolean))
+	].join('; ');
+	return where ? `${trigger} (${where})` : trigger;
+}
+
+function exchangeTitle(e: DialogueEntry): string {
+	const words = e.ID.replace(/^exch_/, '').replace(/_/g, ' ');
+	return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function buildBanterSection(
+	c: CharacterEntry,
+	exchanges: DialogueEntry[]
+): { section: string; count: number } {
+	const mine = exchanges.filter((e) => (e.Lines ?? []).some((l) => l.Character === c.Name));
+	if (mine.length === 0) return { section: '', count: 0 };
+	const out = [
+		'{| class="wikitable mw-collapsible mw-collapsed"',
+		'! Exchange !! Context !! Dialogue'
+	];
+	for (const e of mine) {
+		const lines = (e.Lines ?? []).map((l) => {
+			const text = escapeWikiText((l.Text ?? '').trim()).replace(/\s*\r?\n\s*/g, ' ');
+			return `'''${l.Character || 'Roachard'}:''' ${text}`;
+		});
+		out.push('|-');
+		out.push(`| ${exchangeTitle(e)} || ${exchangeContext(e)} || ${lines.join('<br>')}`);
+	}
+	out.push('|}');
+	return { section: out.join('\n'), count: mine.length };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Context builder
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -421,6 +515,9 @@ export function buildCharacterContext(c: CharacterEntry): Record<string, unknown
 	);
 	const quips = quipsByCharacter.get(c.Name ?? '') ?? [];
 	const quipsTable = buildQuipsTable(quips, defaultEmoteLabels);
+	const innateAbilitiesTable = buildInnateAbilitiesSection(c, upgradesByID);
+	const gridTable = buildGridGrowthTable(loadDefaultGridProfile());
+	const banter = buildBanterSection(c, loadDialogueExchanges());
 
 	// Drop-only / skin tables — upgrades whose ApplicableTo references this
 	// character but which aren't in the SkillTree.
@@ -478,6 +575,13 @@ export function buildCharacterContext(c: CharacterEntry): Record<string, unknown
 		dropOnlyUpgradeCount: dropOnlyUpgrades.length,
 		skinsSection: skinsTable,
 		hasSkins: skinsTable.length > 0,
+		innateAbilitiesSection: innateAbilitiesTable,
+		hasInnateAbilities: innateAbilitiesTable.length > 0,
+		gridSection: gridTable,
+		hasGrid: gridTable.length > 0,
+		banterSection: banter.section,
+		hasBanter: banter.count > 0,
+		banterCount: banter.count,
 		quipsSection: quipsTable,
 		hasQuips: quipsTable.length > 0,
 		quipCount: quips.length,
@@ -526,6 +630,9 @@ export const entity = defineEntity<CharacterEntry>({
 			'upgrades',
 			'drop-only upgrades',
 			'other upgrades',
+			'innate abilities',
+			'upgrade grid',
+			'banter',
 			'skins',
 			'default emotes',
 			'emotes',
