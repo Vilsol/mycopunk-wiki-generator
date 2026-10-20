@@ -8,6 +8,10 @@
 == Stats ==
 {{#lst:<%= it.pageTitle %>/source|stats}}
 <% } -%>
+<% if (it.infusionSection) { %>
+== Pattern Infusion ==
+{{#lst:<%= it.pageTitle %>/source|infusion}}
+<% } -%>
 <% if (it.unlocksSection) { %>
 == Level Unlocks ==
 {{#lst:<%= it.pageTitle %>/source|unlocks}}

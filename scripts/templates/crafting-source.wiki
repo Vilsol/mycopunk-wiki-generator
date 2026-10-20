@@ -11,6 +11,21 @@
 <section begin="costs" />
 <%~ it.costsSection -%>
 <section end="costs" />
+<% if (it.rarityCostsSection) { %>
+<section begin="rarity_costs" />
+<%~ it.rarityCostsSection -%>
+<section end="rarity_costs" />
+<% } -%>
+<% if (it.newCraftRaritySection) { %>
+<section begin="new_craft" />
+<%~ it.newCraftRaritySection -%>
+<section end="new_craft" />
+<% } -%>
+<% if (it.infusionSection) { %>
+<section begin="infusion" />
+<%~ it.infusionSection -%>
+<section end="infusion" />
+<% } -%>
 
 <includeonly><section begin="categories" />
 [[Category:Crafting]]

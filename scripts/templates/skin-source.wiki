@@ -13,6 +13,12 @@
 <% if (it.rarity) { -%>
 |rarity=<%~ it.rarity %>
 <% } -%>
+<% if (it.skinType) { -%>
+|skin_type=<%~ it.skinType %>
+<% } -%>
+<% if (it.requiredPack) { -%>
+|requires=[[<%~ it.requiredPack %>]]
+<% } -%>
 <% if (it.colorHex) { -%>
 |color=<%~ it.colorHex %>
 <% } -%>
@@ -54,6 +60,12 @@
 <% } -%>
 <% if (it.isUniversal) { -%>
 [[Category:Universal Skins]]
+<% } -%>
+<% if (it.skinType) { -%>
+[[Category:<%= it.skinType %> Cosmetics]]
+<% } -%>
+<% if (it.requiredPack) { -%>
+[[Category:<%= it.requiredPack %> Skins]]
 <% } -%>
 <section end="categories" /></includeonly>
 

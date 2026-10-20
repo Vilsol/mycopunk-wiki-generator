@@ -83,6 +83,7 @@ export const ENTITY_HIERARCHY = [
 	'gears',
 	'upgrades',
 	'skins',
+	'entitlements',
 	'enemies',
 	'threats',
 	'missions',

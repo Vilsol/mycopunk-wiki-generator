@@ -1,0 +1,30 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox dlc pack
+|name=<%~ it.name %>
+<% if (it.platforms) { -%>
+|platforms=<%~ it.platforms %>
+<% } -%>
+<% if (it.steamId) { -%>
+|steam_id=<%= it.steamId %>
+<% } -%>
+<% if (it.skinCount) { -%>
+|skin_count=<%= it.skinCount %>
+<% } -%>
+}}<section end="infobox" />
+
+<section begin="overview" />'''<%~ it.name %>''' is a DLC pack for Mycopunk.<% if (it.platforms) { %> It is available on <%~ it.platforms %>.<% } %><section end="overview" />
+<% if (it.skinsSection) { %>
+<section begin="skins" />
+<%~ it.skinsSection -%>
+<section end="skins" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:DLC Packs]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated DLC pack source pages]]

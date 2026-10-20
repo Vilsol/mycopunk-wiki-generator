@@ -35,6 +35,11 @@
 <%~ it.statsSection -%>
 <section end="stats" />
 <% } -%>
+<% if (it.infusionSection) { %>
+<section begin="infusion" />
+<%~ it.infusionSection -%>
+<section end="infusion" />
+<% } -%>
 <% if (it.unlocksSection) { %>
 <section begin="unlocks" />
 <%~ it.unlocksSection -%>

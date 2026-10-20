@@ -5,5 +5,19 @@
 
 == Costs ==
 {{#lst:<%= it.pageTitle %>/source|costs}}
+<% if (it.rarityCostsSection) { %>
+== Costs by Rarity ==
+{{#lst:<%= it.pageTitle %>/source|rarity_costs}}
+<% } -%>
+<% if (it.newCraftRaritySection) { %>
+=== Craft-new roll prices ===
+Rarities marked — cannot be crafted.
+
+{{#lst:<%= it.pageTitle %>/source|new_craft}}
+<% } -%>
+<% if (it.infusionSection) { %>
+== Pattern Infusion ==
+{{#lst:<%= it.pageTitle %>/source|infusion}}
+<% } -%>
 
 {{#lst:<%= it.pageTitle %>/source|categories}}
