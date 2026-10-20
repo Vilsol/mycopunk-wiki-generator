@@ -10,6 +10,14 @@
 == Variants ==
 {{#lst:<%= it.pageTitle %>/source|variants}}
 <% } -%>
+<% if (it.hasPartsSection) { %>
+== Body Parts ==
+{{#lst:<%= it.pageTitle %>/source|parts}}
+<% } -%>
+<% if (it.hasSpawnsSection) { %>
+== Spawns In ==
+{{#lst:<%= it.pageTitle %>/source|spawns}}
+<% } -%>
 <% if (it.hasLootSection) { %>
 == Drops ==
 {{#lst:<%= it.pageTitle %>/source|loot}}

@@ -13,6 +13,14 @@
         <data source="can_be_despawned">
             <label>Despawnable</label>
             <format>{{{can_be_despawned}}}</format>
+        </data>
+        <data source="limit_slots">
+            <label>Limit slots</label>
+            <format>{{{limit_slots}}}</format>
+        </data>
+        <data source="arm_count">
+            <label>Arms</label>
+            <format>{{{arm_count}}}</format>
         </data>{{#if: {{{api_name|}}} |
         <section collapse="closed">
             <header>Technical Information</header>
@@ -39,6 +47,8 @@ This template displays an enemy (hostile NPC) in a Portable Infobox.
 |enemy_type = Grunt | Brute | Abomination | Boss
 |tags = Comma-separated behavior tags (e.g. "Gunner, Tall, Turret")
 |can_be_despawned = Yes | No
+|limit_slots = Spawn-limit slots the enemy occupies (optional)
+|arm_count = Arms per spawn, e.g. "2–3" (optional)
 |icon = Icon filename (optional — enemies have no dump icon yet)
 }}
 </pre>
