@@ -31,9 +31,10 @@ export async function fetchManifest(): Promise<Index> {
 // available; otherwise downloads the gzipped dump, decompresses, and
 // writes both the parsed JSON and the raw gzip into the cache directory.
 // On network failure, falls back to the cached copy if one exists.
-export async function fetchVersionDump(version: string): Promise<DataDump> {
+// `refresh` skips the cache: the same version label can be re-exported.
+export async function fetchVersionDump(version: string, refresh = false): Promise<DataDump> {
 	const cachePath = path.join(CACHE_DIR, `${version}.json`);
-	if (fs.existsSync(cachePath)) {
+	if (!refresh && fs.existsSync(cachePath)) {
 		try {
 			return JSON.parse(fs.readFileSync(cachePath, 'utf8')) as DataDump;
 		} catch {

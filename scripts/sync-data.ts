@@ -50,7 +50,7 @@ async function main() {
 		console.log(`Active version is already ${target}; skipping data fetch.`);
 	} else {
 		console.log(`Loading dump for ${target}…`);
-		await fetchVersionDump(target);
+		await fetchVersionDump(target, force);
 		setCurrentVersion(target);
 		console.log(`Active version → ${target}.`);
 	}
