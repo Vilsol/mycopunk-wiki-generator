@@ -1,6 +1,16 @@
 {{CharacterNav}}
 {{#lst:<%= it.pageTitle %>/source|seo}}
 {{#lst:<%= it.pageTitle %>/source|infobox}}
+<% if (it.hasInnateAbilities) { %>
+== Innate Abilities ==
+{{#lst:<%= it.pageTitle %>/source|innate_abilities}}
+<% } -%>
+<% if (it.hasGrid) { %>
+== Upgrade Grid ==
+The upgrade grid grows with [[Player Level|player level]].
+
+{{#lst:<%= it.pageTitle %>/source|grid}}
+<% } -%>
 <% if (it.hasSkillTree) { %>
 == Skill Tree ==
 <% if (it.hasSkillTreeImage) { -%>
@@ -20,6 +30,12 @@
 <% if (it.hasSkins) { %>
 == Skins ==
 {{#lst:<%= it.pageTitle %>/source|skins}}
+<% } -%>
+<% if (it.hasBanter) { %>
+== Banter ==
+<%= it.banterCount %> exchanges featuring <%= it.name %>.
+
+{{#lst:<%= it.pageTitle %>/source|banter}}
 <% } -%>
 <% if (it.hasQuips) { %>
 == Quips ==
