@@ -10,6 +10,7 @@ import { loadOvertime } from '../load-mission-modifiers';
 import type { OvertimeReward } from '../load-mission-modifiers';
 import { finalTitle, titleKey } from '../title-resolver';
 import { escapeWikiText, plainText } from '../wiki-text';
+import { loadPlanets, regionLink } from '../load-world';
 import { formatDate, getModifiersByID, modifierLink } from './mission-modifiers';
 import { safeFilename as threatSafeFilename, threatPageTitle } from './threats';
 
@@ -63,6 +64,7 @@ function buildRewardsTable(rewards: OvertimeReward[], multiplier: number): strin
 }
 
 export function buildOvertimeContext(): Record<string, unknown> {
+	const planetsByKey = new Map(loadPlanets().map((p) => [p.key, p]));
 	const ot = loadOvertime();
 	const threats = loadThreatList();
 	const byID = getModifiersByID();
@@ -114,8 +116,8 @@ export function buildOvertimeContext(): Record<string, unknown> {
 		hasRewards: ot.rewards.length > 0,
 		repeatableSection: buildRewardsTable(ot.repeatableRewards, multiplier),
 		hasRepeatable: ot.repeatableRewards.length > 0,
-		includedRegions: ot.regions.included.map(escapeWikiText).join(', '),
-		excludedRegions: ot.regions.excluded.map(escapeWikiText).join(', ')
+		includedRegions: ot.regions.included.map((r) => regionLink(r, planetsByKey)).join(', '),
+		excludedRegions: ot.regions.excluded.map((r) => regionLink(r, planetsByKey)).join(', ')
 	};
 }
 

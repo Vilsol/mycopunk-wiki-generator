@@ -185,7 +185,7 @@ export interface OvertimeData {
 	rewards: OvertimeReward[];
 	repeatableRewards: OvertimeReward[];
 	profile: ThreatProfile | undefined;
-	regions: { included: string[]; excluded: string[] };
+	regions: { included: Region[]; excluded: Region[] };
 }
 
 const OVERTIME_CONTAINER = 'Overtime Assignment';
@@ -216,7 +216,6 @@ export function loadOvertime(): OvertimeData {
 		});
 
 	const regions = Object.values(d.regions ?? {});
-	const regionName = (r: Region) => (r.RegionName ?? r.NameID).trim();
 
 	return {
 		resetInterval: raw.resetInterval,
@@ -231,8 +230,8 @@ export function loadOvertime(): OvertimeData {
 		repeatableRewards: toRewards(raw.repeatableRewards?.properties),
 		profile: d.threatProfiles?.[OVERTIME_PROFILE],
 		regions: {
-			included: regions.filter((r) => !r.ExcludeFromOvertimeAssignment).map(regionName),
-			excluded: regions.filter((r) => r.ExcludeFromOvertimeAssignment).map(regionName)
+			included: regions.filter((r) => !r.ExcludeFromOvertimeAssignment),
+			excluded: regions.filter((r) => r.ExcludeFromOvertimeAssignment)
 		}
 	};
 }
