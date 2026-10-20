@@ -130,7 +130,8 @@ depends = [
 [tasks."release:upload-ci"]
 description = "Upload CI-generated wiki source + SVG assets (skips absent icon dirs)"
 run = '''
-bun scripts/upload-wiki.ts --all
+# Exit 2 = host pages flagged for manual review, reported but not fatal.
+bun scripts/upload-wiki.ts --all || [ $? -eq 2 ]
 bun scripts/upload-files.ts --all
 '''
 
