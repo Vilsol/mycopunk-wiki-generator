@@ -1,0 +1,19 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+
+<section begin="overview" />
+Fulfillments are the in-game achievements of Mycopunk. There are <%= it.count %> in total, worth <%= it.totalScore %> Employee Appreciation Score combined. Many also grant a reward, most often a cosmetic hat.
+<section end="overview" />
+
+<section begin="fulfillments" />
+<%~ it.categoriesSection -%>
+<section end="fulfillments" />
+
+<includeonly><section begin="categories" />
+[[Category:Fulfillments]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated fulfillments source pages]]

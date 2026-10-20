@@ -275,7 +275,9 @@ const ENTITIES: Record<string, EntityLoader> = {
 	entitlements: async () =>
 		(await import('./entities/entitlements')).entity as MaterializedEntity<unknown>,
 	'upgrade-presets': async () =>
-		(await import('./entities/upgrade-presets')).entity as MaterializedEntity<unknown>
+		(await import('./entities/upgrade-presets')).entity as MaterializedEntity<unknown>,
+	fulfillments: async () =>
+		(await import('./entities/fulfillments')).entity as MaterializedEntity<unknown>
 };
 
 export async function getEntity(name: string): Promise<MaterializedEntity<unknown>> {
