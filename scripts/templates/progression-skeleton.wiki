@@ -1,0 +1,24 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+
+''To be written.''
+
+== Level unlocks ==
+{{#lst:<%= it.pageTitle %>/source|level_unlocks}}
+
+== XP curves ==
+{{#lst:<%= it.pageTitle %>/source|xp_curves}}
+
+XP needed to advance from each of the first <%= it.xpTableLevels %> levels:
+
+{{#lst:<%= it.pageTitle %>/source|xp_table}}
+<% if (it.missionXP) { %>
+== Mission XP ==
+{{#lst:<%= it.pageTitle %>/source|mission_xp}}
+<% } -%>
+
+== Upgrade grid ==
+The upgrade grid grows as your player level increases.
+
+{{#lst:<%= it.pageTitle %>/source|grid}}
+
+{{#lst:<%= it.pageTitle %>/source|categories}}
