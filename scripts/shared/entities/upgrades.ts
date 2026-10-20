@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import {
 	getPropertyStatRows,
+	getTurbochargedRows,
 	convertCode,
 	convertCodeWiki,
 	gunMappings,
@@ -136,7 +137,11 @@ function buildAcquisitionSection(
 	const node = enrichment.skillTreeByUpgradeID.get(String(upgrade.ID));
 	const sourcePhrase = COLLECTION_SOURCE_PHRASES[upgrade.CollectionSource ?? ''] ?? null;
 
-	if (auth) {
+	if (upgrade.DefaultUpgradeOf) {
+		lines.push(
+			`'''Source:''' Innate ability of [[${escapeWikiText(upgrade.DefaultUpgradeOf)}]], available from the start.`
+		);
+	} else if (auth) {
 		lines.push(`'''Source:''' Awarded by redeeming the [[${auth.Name}]] item.`);
 	} else if (node) {
 		const tier = (node.Layer ?? 0) + 1;
@@ -171,17 +176,9 @@ function buildAcquisitionSection(
 	return lines.join('\n');
 }
 
-function generatePropertiesSection(upgrade: GenericGunUpgrade): string {
-	if (!upgrade.Properties || upgrade.Properties.length === 0) return '';
-
-	const visibleProperties = upgrade.Properties.filter((p) => p.StatNames && p.StatNames.length > 0);
-	if (visibleProperties.length === 0) return '';
-
-	const allRows = visibleProperties.flatMap((p) => getPropertyStatRows(p));
-	if (allRows.length === 0) return '';
-
+function renderStatTable(rows: { name?: string; value: string }[]): string {
 	const out: string[] = ['{| class="wikitable sortable"', '! Stat !! Value'];
-	for (const row of allRows) {
+	for (const row of rows) {
 		out.push('|-');
 		if (row.name) {
 			out.push(`| ${convertCode(row.name)} || ${convertCode(row.value ?? '')}`);
@@ -191,6 +188,41 @@ function generatePropertiesSection(upgrade: GenericGunUpgrade): string {
 	}
 	out.push('|}');
 	return out.join('\n');
+}
+
+// `ApplyStatUpgrades` upgrades also grant one random bonus stat per copy,
+// drawn from the dump's `genericStatUpgrades` pool.
+function genericBonusStatsLine(upgrade: GenericGunUpgrade): string {
+	if (!upgrade.Flags?.split(',').some((f) => f.trim() === 'ApplyStatUpgrades')) return '';
+	const pool = (readDump() as unknown as { genericStatUpgrades?: GenericGunUpgrade['Properties'] })
+		.genericStatUpgrades;
+	const entries = (pool ?? []).flatMap((p) =>
+		getPropertyStatRows(p).map(
+			(r) => `${convertCode(r.name ?? p.Label ?? '')} ${convertCode(r.value)}`
+		)
+	);
+	if (entries.length === 0) return '';
+	return `'''Random bonus stat:''' each copy also grants one randomly chosen player bonus: ${entries.join('; ')}.`;
+}
+
+function generatePropertiesSection(upgrade: GenericGunUpgrade): string {
+	const blocks: string[] = [];
+
+	const visibleProperties = (upgrade.Properties ?? []).filter(
+		(p) => p.StatNames && p.StatNames.length > 0
+	);
+	const allRows = visibleProperties.flatMap((p) => getPropertyStatRows(p));
+	if (allRows.length > 0) blocks.push(renderStatTable(allRows));
+
+	const turboRows = (upgrade.Properties ?? []).flatMap((p) => getTurbochargedRows(p));
+	if (turboRows.length > 0) {
+		blocks.push(`'''When turbocharged:'''\n${renderStatTable(turboRows)}`);
+	}
+
+	const bonus = genericBonusStatsLine(upgrade);
+	if (bonus) blocks.push(bonus);
+
+	return blocks.join('\n\n');
 }
 
 // Plain-text description for `og:description`. Discord/Twitter crawlers want
@@ -207,6 +239,16 @@ function plainDescription(raw: string | undefined | null): string {
 		.replaceAll('|', '{{!}}')
 		.replaceAll('{{', '&#123;&#123;')
 		.replaceAll('}}', '&#125;&#125;');
+}
+
+// The title fragment equipping this upgrade can contribute, e.g.
+// "Medical / Medic (priority 5)"; null when it grants none.
+function upgradeTitle(upgrade: GenericGunUpgrade): string | null {
+	const t = upgrade.Title;
+	if (!t) return null;
+	const parts = [t.Adjective, t.Noun].map((x) => escapeWikiText(plainText(x))).filter(Boolean);
+	if (parts.length === 0) return null;
+	return `${parts.join(' / ')} (priority ${t.Priority})`;
 }
 
 function humanizeUpgradeType(t: string): string | null {
@@ -241,6 +283,7 @@ export function buildUpgradeContextSync(
 		pattern: `${escapeWikiText(displayFilename(upgrade))}_Pattern.svg`,
 		unlockCosts: upgrade.UnlockCost || [],
 		apiName: escapeWikiText(upgrade.APIName),
+		title: upgradeTitle(upgrade),
 		flags: upgrade.Flags ? escapeWikiText(upgrade.Flags) : null,
 		applicableTo: upgrade.ApplicableTo?.length
 			? `[[${upgrade.ApplicableTo.map((a) => mapGunName(a.Name)).join(']], [[')}]]`

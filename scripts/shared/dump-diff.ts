@@ -74,6 +74,10 @@ const OUROBOROS_COST_BY_RARITY: Record<string, number> = {
 	Contraband: 15
 };
 
+// Flags that only classify upgrades internally (skill-tree membership,
+// the empty-flags sentinel) and carry no player-facing meaning.
+const INTERNAL_FLAGS = new Set(['None', 'SkillTreeUpgrade']);
+
 // ---------- typed helpers over the dump shape ------------------------------
 
 interface ResourceCostEntry {
@@ -520,7 +524,7 @@ function diffOneUpgrade(prev: DumpUpgrade, curr: DumpUpgrade): Change[] {
 			(s ?? '')
 				.split(',')
 				.map((f) => f.trim())
-				.filter(Boolean)
+				.filter((f) => f && !INTERNAL_FLAGS.has(f))
 		);
 	const flagsDiff = setDiff(parseFlags(prev.Flags), parseFlags(curr.Flags));
 	for (const v of flagsDiff.added) out.push({ kind: 'list-add', field: 'Flags', value: v });

@@ -23,6 +23,9 @@
 |UnlockCost<%= index + 1 %>_Count=<%= cost.Count %>
 <% }) -%>
 |APIName=<%~ it.apiName %>
+<% if (it.title) { -%>
+|Title=<%~ it.title %>
+<% } -%>
 <% if (it.flags) { -%>
 |Flags=<%~ it.flags %>
 <% } -%>

@@ -19,7 +19,8 @@ import type { DataDump } from './upgrades/types.ts';
 // instead of being replayed (which would feed malformed records to the
 // renderer). v2: `rolls` carries fromMin/fromMax/toMin/toMax (was
 // added/removed). v3: categorical multi-key stats aggregate into `category`.
-export const CHANGE_FORMAT_VERSION = 3;
+// v4: internal-only flags (`SkillTreeUpgrade`, `None`) no longer diffed.
+export const CHANGE_FORMAT_VERSION = 4;
 
 interface CachedDiff {
 	formatVersion: number;

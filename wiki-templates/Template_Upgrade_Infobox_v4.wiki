@@ -17,6 +17,10 @@
         <data source="UpgradeType">
             <label>Upgrade Type</label>
             <format>{{{UpgradeType}}}</format>
+        </data>
+        <data source="Title">
+            <label>Title</label>
+            <format>{{{Title}}}</format>
         </data>{{#if: {{{pattern|}}} |
         <section>
             <header>Pattern</header>
@@ -77,6 +81,7 @@ This template is to display upgrades.
 |ID = ID of the upgrade
 |APIName = API name of the upgrade
 |Flags = Flags of the upgrade
+|Title = Player title fragment granted when equipped (e.g. "Medical / Medic (priority 5)")
 |ApplicableTo = Applicable to (e.g. "Fast Shotgun, Fast Reload Shotgun")
 }}
 </pre>
