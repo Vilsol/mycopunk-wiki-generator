@@ -95,7 +95,10 @@ export const ENTITY_HIERARCHY = [
 	'rarities',
 	'status-effects',
 	'upgrade-presets',
-	'fulfillments'
+	'fulfillments',
+	'mission-modifiers',
+	'mission-modifier-list',
+	'overtime-assignment'
 ];
 
 export function titleKey(entity: string, safeFilename: string): string {

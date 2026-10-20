@@ -1,0 +1,18 @@
+<section begin="seo" />{{#seo:
+|title=Mission Modifiers
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="modifiers" />
+<%~ it.tableSection -%>
+<section end="modifiers" />
+
+<section begin="counts" />
+<%~ it.countSection -%>
+<section end="counts" />
+
+<includeonly><section begin="categories" />
+[[Category:Mission Modifiers]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated mission modifier source pages]]

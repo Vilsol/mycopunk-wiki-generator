@@ -1,0 +1,39 @@
+<section begin="seo" />{{#seo:
+|title=Overtime Assignment
+|description=<%~ it.seoDescription %>
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="overview" />
+* '''Reset:''' every <%~ it.resetDays %> days (<%~ it.resetSeconds %> seconds)<% if (it.resetAt) { %>, <%~ it.resetAt %><% } %>
+* '''Minimum threat:''' <%~ it.minThreatLink %>
+* '''Minimum intensity:''' <%~ it.minIntensity %>
+<% if (it.includedRegions) { -%>
+* '''Regions:''' <%~ it.includedRegions %><% if (it.excludedRegions) { %> (excluded: <%~ it.excludedRegions %>)<% } %>
+<% } -%>
+<section end="overview" />
+<% if (it.hasRotation) { %>
+<section begin="rotation" />
+<%~ it.rotationSection -%>
+<section end="rotation" />
+<% } -%>
+<% if (it.hasRewards) { %>
+<section begin="rewards" />
+<%~ it.rewardsSection -%>
+<section end="rewards" />
+<% } -%>
+<% if (it.hasRepeatable) { %>
+<section begin="repeatable" />
+<%~ it.repeatableSection -%>
+<section end="repeatable" />
+<% } -%>
+<% if (it.hasProfile) { %>
+<section begin="profile" />
+<%~ it.profileSection -%>
+<section end="profile" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Missions]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated mission modifier source pages]]

@@ -1,0 +1,25 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+The '''Overtime Assignment''' is a weekly mission with a fixed set of [[Mission Modifiers|mission modifiers]] that changes every reset.
+
+== Overview ==
+{{#lst:<%= it.pageTitle %>/source|overview}}
+<% if (it.hasRotation) { %>
+== Modifier rotation ==
+{{#lst:<%= it.pageTitle %>/source|rotation}}
+<% } -%>
+<% if (it.hasRewards) { %>
+== Rewards ==
+{{#lst:<%= it.pageTitle %>/source|rewards}}
+<% } -%>
+<% if (it.hasRepeatable) { %>
+== Repeatable rewards ==
+{{#lst:<%= it.pageTitle %>/source|repeatable}}
+<% } -%>
+<% if (it.hasProfile) { %>
+== Reward chances by threat ==
+Reward chances above are multiplied by the overtime threat profile:
+
+{{#lst:<%= it.pageTitle %>/source|profile}}
+<% } -%>
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

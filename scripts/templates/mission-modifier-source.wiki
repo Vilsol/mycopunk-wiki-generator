@@ -1,0 +1,42 @@
+<section begin="seo" />{{#seo:
+|title=<%~ it.name %>
+|description=<%~ it.seoDescription %>
+|image=<%~ it.icon %>
+|image_alt=<%~ it.name %> mission modifier icon
+|twitter_card=summary
+}}<section end="seo" />
+<section begin="infobox" />{{Infobox mission modifier
+|name=<%~ it.name %>
+|api_name=<%~ it.apiName %>
+|icon=<%~ it.icon %>
+<% if (it.danger) { -%>
+|danger=<%~ it.danger %>
+<% } -%>
+<% if (it.xpMultiplier) { -%>
+|xp_multiplier=<%~ it.xpMultiplier %>
+<% } -%>
+|stackable=<%~ it.stackable %>
+}}<section end="infobox" />
+<% if (it.description) { %>
+<section begin="description" /><%~ it.description %><section end="description" />
+<% } -%>
+<% if (it.hasIncompatible) { %>
+<section begin="incompatibilities" />
+<%~ it.incompatibleSection -%>
+<section end="incompatibilities" />
+<% } -%>
+
+<section begin="appears" />
+<%~ it.appearsSection -%>
+<section end="appears" />
+<% if (it.hasVariants) { %>
+<section begin="variants" />
+<%~ it.variantsSection -%>
+<section end="variants" />
+<% } -%>
+
+<includeonly><section begin="categories" />
+[[Category:Mission Modifiers]]
+<section end="categories" /></includeonly>
+
+[[Category:Auto-generated mission modifier source pages]]

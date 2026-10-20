@@ -1,0 +1,12 @@
+{{#lst:<%= it.pageTitle %>/source|seo}}
+Mission modifiers change the rules of a mission in exchange for bonus XP. There are <%= it.modifierCount %> of them.
+
+== All mission modifiers ==
+{{#lst:<%= it.pageTitle %>/source|modifiers}}
+
+== Modifiers per mission ==
+A generated mission has a <%= it.chancePct %> chance to roll any modifiers at all. How many it gets is decided by a roll against a fixed curve, and does not depend on the threat level. Modifiers are then picked by weight from the random pool, and a few are only ever used in the [[Overtime Assignment]].
+
+{{#lst:<%= it.pageTitle %>/source|counts}}
+
+{{#lst:<%= it.pageTitle %>/source|categories}}

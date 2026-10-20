@@ -277,7 +277,13 @@ const ENTITIES: Record<string, EntityLoader> = {
 	'upgrade-presets': async () =>
 		(await import('./entities/upgrade-presets')).entity as MaterializedEntity<unknown>,
 	fulfillments: async () =>
-		(await import('./entities/fulfillments')).entity as MaterializedEntity<unknown>
+		(await import('./entities/fulfillments')).entity as MaterializedEntity<unknown>,
+	'mission-modifiers': async () =>
+		(await import('./entities/mission-modifiers')).entity as MaterializedEntity<unknown>,
+	'mission-modifier-list': async () =>
+		(await import('./entities/mission-modifier-list')).entity as MaterializedEntity<unknown>,
+	'overtime-assignment': async () =>
+		(await import('./entities/overtime-assignment')).entity as MaterializedEntity<unknown>
 };
 
 export async function getEntity(name: string): Promise<MaterializedEntity<unknown>> {
