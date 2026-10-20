@@ -184,7 +184,7 @@ function generatePropertiesSection(upgrade: GenericGunUpgrade): string {
 	for (const row of allRows) {
 		out.push('|-');
 		if (row.name) {
-			out.push(`| ${convertCode(row.name)} || ${convertCode(row.value)}`);
+			out.push(`| ${convertCode(row.name)} || ${convertCode(row.value ?? '')}`);
 		} else {
 			out.push(`| colspan="2" | ${convertCode(row.value)}`);
 		}
