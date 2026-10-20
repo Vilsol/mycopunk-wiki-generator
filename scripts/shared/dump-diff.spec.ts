@@ -140,3 +140,22 @@ describe('diffDumps categorical aggregation', () => {
 		expect(changes.filter((c) => c.kind === 'category')).toEqual([]);
 	});
 });
+
+describe('diffDumps flags', () => {
+	const withFlags = (Flags: string) => ({ upgrades: { '1': { ID: '1', Name: 'Flagged', Flags } } });
+
+	test('ignores internal-only flags', () => {
+		expect(
+			diffDumps(withFlags('SkillTreeUpgrade, CanStack'), withFlags('CanStack')).get('1')
+		).toBeUndefined();
+		expect(diffDumps(withFlags('None'), withFlags('CanStack')).get('1')).toEqual([
+			{ kind: 'list-add', field: 'Flags', value: 'CanStack' }
+		]);
+	});
+
+	test('treats flag reordering as no change', () => {
+		const prev = withFlags('CanStack, CanTurbocharge');
+		const curr = withFlags('CanTurbocharge, CanStack');
+		expect(diffDumps(prev, curr).get('1')).toBeUndefined();
+	});
+});
